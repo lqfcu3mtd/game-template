@@ -893,14 +893,18 @@
       const e=empties[(Math.random()*empties.length)|0];
       const p=tileCenter(e.r,e.c);
       if (Math.hypot(p.x-player.x, p.y-player.y) > 190){       // 离玩家远一点刷
-        const isPuppet = Math.random()<0.3;
-        monsters.push({ type: isPuppet?"puppet":"ghost",
+        const roll = Math.random();                       // 幽灵60% / 偷偷猫20% / 傀儡蛋20%
+        const isCat = roll<0.2, isPuppet = roll>=0.2 && roll<0.4;
+        const mtype = isCat?"cat":(isPuppet?"puppet":"ghost");
+        monsters.push({ type: mtype,
                         x:p.x, y:p.y, r: isPuppet?16+Math.random()*3 : 13+Math.random()*5,
                         angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
                         state:"chase", timer:0, hp:2,
                         hue: isPuppet?285+Math.random()*25 : 200+Math.random()*80,
-                        wanderT:0, spawnFx:0.7, face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0 });
-        addFloat(p.x, p.y-22, isPuppet?"傀儡蛋出现":"小幽灵出现", isPuppet?"#d9a6ff":"#9ecbff");
+                        wanderT:0, spawnFx:0.7, face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0,
+                        visibleT:0, stealthT:0 });
+        addFloat(p.x, p.y-22, mtype==="cat"?"偷偷猫出现":(mtype==="puppet"?"傀儡蛋出现":"小幽灵出现"),
+                 mtype==="cat"?"#d9a6ff":(mtype==="puppet"?"#d9a6ff":"#9ecbff"));
         return;
       }
     }
@@ -948,9 +952,10 @@
   function eatGhost(eater, m, belly){
     if (m.r >= eater.r+8){ addFloat(m.x, m.y-20, "吃不掉！", "#ff8888"); return; }
     m.dead=true;
-    belly.push({type: m.type==="puppet" ? "puppet" : "ghost", t:15});
+    belly.push({type: m.type==="puppet"?"puppet":(m.type==="cat"?"cat":"ghost"), t:15});
     game.gems+=15; updateHud();
-    addFloat(m.x, m.y-18, "吃掉"+(m.type==="puppet"?"傀儡蛋":"小幽灵")+" +15", "#ffd76a");
+    const nm = m.type==="puppet"?"傀儡蛋":(m.type==="cat"?"偷偷猫":"小幽灵");
+    addFloat(m.x, m.y-18, "吃掉"+nm+" +15", "#ffd76a");
   }
   function spawnFire(m, tx, ty){   // 小幽灵喷的小火焰：会落地成火堆，靠近/踩上 -20（射程已缩短）
     const ang=Math.atan2(ty-m.y, tx-m.x)+(Math.random()-0.5)*0.6;
@@ -963,12 +968,12 @@
     for (const it of belly){
       if (it.type==="gem"){
         gems.push({ x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30, r:8, taken:false, ph:Math.random()*6 });
-      } else if (it.type==="ghost" || it.type==="puppet"){
+      } else if (it.type==="ghost" || it.type==="puppet" || it.type==="cat"){
         monsters.push({ type:it.type, x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30,
                         r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
                         angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
                         hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
-                        face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0 });
+                        face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0, visibleT:0, stealthT:0 });
       } else if (it.type==="chest"){
         treasure.x=x; treasure.y=y; chestState="intact"; chestCarrier=null;
       }
@@ -978,11 +983,11 @@
   function spitItem(ent, it){   // 15 秒消化到期：吐在原地
     const x=ent.x+(Math.random()-0.5)*24, y=ent.y+(Math.random()-0.5)*24;
     if (it.type==="gem") gems.push({ x, y, r:8, taken:false, ph:Math.random()*6 });
-    else if (it.type==="ghost" || it.type==="puppet")
+    else if (it.type==="ghost" || it.type==="puppet" || it.type==="cat")
       monsters.push({ type:it.type, x, y, r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
                       angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
                       hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
-                      face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0 });
+                      face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0, visibleT:0, stealthT:0 });
     else if (it.type==="chest"){
       treasure.x=ent.x; treasure.y=ent.y; chestState="intact"; chestCarrier=null;
       addFloat(ent.x, ent.y-24, "吐出宝箱", "#9ecbff");
@@ -1259,11 +1264,11 @@
         if (d<td && Math.hypot(b.x-player.x,b.y-player.y)>150){ td=d; tx=b.x; ty=b.y; targetBot=b; }
       }
       // 找最近的活体（玩家或队友）：喷火只针对靠近的人，不乱喷
-      let ne={x:player.x,y:player.y}, nd=Math.hypot(player.x-m.x,player.y-m.y);
+      let ne={x:player.x,y:player.y}, neObj=player, nd=Math.hypot(player.x-m.x,player.y-m.y);
       for (const b of bots){
         if (b.dead) continue;
         const d=Math.hypot(b.x-m.x,b.y-m.y);
-        if (d<nd){ nd=d; ne={x:b.x,y:b.y}; }
+        if (d<nd){ nd=d; ne={x:b.x,y:b.y}; neObj=b; }
       }
       // 小幽灵虚弱循环：追击 → 靠近后原地蓄力2秒 → 喷火0.5秒 → 僵3秒 → 恢复追击
       // 傀儡蛋：被盯着就定住 / 没被盯着快速奔跑 / 面向目标蓄力1秒咬 40 血
@@ -1296,6 +1301,39 @@
         if (m.flash>0) m.flash-=dt;
         if (m.spawnFx>0) m.spawnFx-=dt;
         if (m.stepFx>0) m.stepFx-=dt;
+      } else if (m.type==="cat"){
+        // 偷偷猫：隐身悄悄接近 → 靠近现形扑咬（-20）→ 缩回隐身；被攻击强制现形
+        m.visibleT-=dt;
+        if (m.flash>0) m.visibleT=Math.max(m.visibleT, 1.5);   // 被击现形
+        if (m.visibleT>0){
+          if (nd>0.1){                                          // 现形：快速扑向目标
+            const spd=cfg.chase*1.3;
+            const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
+            const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
+            if (okX) m.x=nx; if (okY) m.y=ny;
+            m.face = ne.x>=m.x ? 1 : -1;
+            if (m.flash<=0 && nd < m.r+16+8){ hurt(neObj, 20); m.visibleT=0; m.stealthT=1.2; }   // 扑咬 -20，缩回隐身（被击现形期间不扑咬）
+          }
+        } else {
+          m.stealthT-=dt;
+          if (nd<cfg.detect && nd>0.1){
+            const spd=cfg.chase*0.8;                            // 隐身潜行
+            const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
+            const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
+            if (okX) m.x=nx; if (okY) m.y=ny;
+            m.face = ne.x>=m.x ? 1 : -1;
+            if (nd<140 && m.stealthT<=0){ m.visibleT=0.7; }     // 够近才现形扑咬
+          } else {
+            m.wt-=dt;
+            if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=0.8+Math.random()*1.4; }
+            const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
+            if (!hitsWall(nx, m.y, m.r)) m.x=nx;
+            if (!hitsWall(m.x, ny, m.r)) m.y=ny;
+          }
+        }
+        m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
+        if (m.flash>0) m.flash-=dt;
+        if (m.spawnFx>0) m.spawnFx-=dt;
       } else if (m.stun>0){
         m.stun-=dt;
       } else if (m.state==="charge"){
@@ -1790,6 +1828,7 @@
 
   function drawGhost(m){
     if (m.type==="puppet"){ drawPuppet(m); return; }
+    if (m.type==="cat"){ drawCat(m); return; }
     const g=m.hue;
     ctx.save(); ctx.translate(m.x, m.y);
     if (m.flash>0){                                     // 被撞飞的冲击环
@@ -1878,6 +1917,46 @@
     ctx.fillStyle="#8a2a3a"; ctx.font="bold 7px sans-serif"; ctx.textAlign="center";
     ctx.fillText("咒", 0, 3);
     ctx.restore();
+    ctx.restore();
+  }
+
+  function drawCat(m){   // 偷偷猫：隐身时半透明（只见猫眼），现身时完整猫咪
+    ctx.save(); ctx.translate(m.x, m.y);
+    const t=performance.now()/1000;
+    const vis = m.visibleT>0 || m.flash>0;
+    ctx.globalAlpha = vis ? 1 : 0.16;
+    // 尾巴（摆动）
+    ctx.strokeStyle = vis ? "#5a3a6a" : "#5a3a6a";
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(m.r*0.55, 4);
+    ctx.quadraticCurveTo(m.r*1.1, 2+Math.sin(t*4)*5, m.r*0.95, 8+Math.sin(t*4+1)*6);
+    ctx.stroke();
+    // 耳朵
+    ctx.fillStyle="#6a4a80";
+    ctx.beginPath(); ctx.moveTo(-m.r*0.8,-m.r*0.4); ctx.lineTo(-m.r*0.35,-m.r*1.0); ctx.lineTo(-m.r*0.1,-m.r*0.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo( m.r*0.8,-m.r*0.4); ctx.lineTo( m.r*0.35,-m.r*1.0); ctx.lineTo( m.r*0.1,-m.r*0.5); ctx.closePath(); ctx.fill();
+    // 头 + 身
+    ctx.fillStyle="#6a4a80";
+    ctx.beginPath(); ctx.arc(0,0,m.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#7a5a92";
+    ctx.beginPath(); ctx.arc(-2,-3,m.r*0.8,0,Math.PI*2); ctx.fill();
+    // 眼睛：竖瞳发光（隐身时也隐约可见）
+    ctx.fillStyle = vis ? "#ffd24a" : "rgba(255,210,74,.75)";
+    ctx.beginPath(); ctx.arc(-5,-4,2.6,0,Math.PI*2); ctx.arc(5,-4,2.6,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#1a0f24";
+    ctx.fillRect(-6.5,-5,2.2,4); ctx.fillRect(3.3,-5,2.2,4);   // 竖瞳
+    // 胡须
+    ctx.strokeStyle = vis ? "rgba(255,255,255,.7)" : "rgba(255,255,255,.3)";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(-4,1); ctx.lineTo(-m.r-5,3); ctx.moveTo(-4,3); ctx.lineTo(-m.r-5,7);
+    ctx.moveTo( 4,1); ctx.lineTo( m.r+5,3); ctx.moveTo( 4,3); ctx.lineTo( m.r+5,7);
+    ctx.stroke();
+    // 嘴
+    ctx.fillStyle = vis ? "#2a1836" : "rgba(42,24,54,.6)";
+    ctx.beginPath(); ctx.arc(0,4,2,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1;
     ctx.restore();
   }
 
