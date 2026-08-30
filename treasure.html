@@ -265,7 +265,7 @@
 
   // ===== 难度配置 =====
   const DIFF = {
-    easy:   { label:"简单", lives:3, monsters:2, puppets:0, chase:80,  detect:150, wander:46 },
+    easy:   { label:"简单", lives:3, monsters:2, puppets:1, chase:80,  detect:150, wander:46 },
     normal: { label:"普通", lives:3, monsters:3, puppets:1, chase:104, detect:185, wander:52 },
     hard:   { label:"困难", lives:2, monsters:5, puppets:2, chase:132, detect:235, wander:58 },
   };
@@ -894,11 +894,11 @@
     game.gems+=15; updateHud();
     addFloat(m.x, m.y-18, "吃掉"+(m.type==="puppet"?"傀儡蛋":"小幽灵")+" +15", "#ffd76a");
   }
-  function spawnFire(m, tx, ty){   // 小幽灵喷的小火焰：会落地成火堆，靠近/踩上 -20
+  function spawnFire(m, tx, ty){   // 小幽灵喷的小火焰：会落地成火堆，靠近/踩上 -20（射程已缩短）
     const ang=Math.atan2(ty-m.y, tx-m.x)+(Math.random()-0.5)*0.6;
     fires.push({ x:m.x+Math.cos(ang)*m.r, y:m.y+Math.sin(ang)*m.r,
                  vx:Math.cos(ang)*230, vy:Math.sin(ang)*230,
-                 life:2.2, t:0, landed:false, active:true });
+                 life:2.05, t:0, landed:false, active:true });
   }
   function dropBelly(x, y, belly){
     if (!belly || !belly.length) return;
@@ -1188,10 +1188,13 @@
         const d=Math.hypot(b.x-m.x,b.y-m.y);
         if (d<nd){ nd=d; ne={x:b.x,y:b.y}; }
       }
-      // 小幽灵虚弱循环：追击 → 停住喷火0.5秒 → 僵3秒 → 恢复追击
+      // 小幽灵虚弱循环：追击 → 靠近后原地蓄力2秒 → 喷火0.5秒 → 僵3秒 → 恢复追击
       // 傀儡蛋：不喷火，缓慢贴身追击，碰到才扣血
       if (m.stun>0){
         m.stun-=dt;
+      } else if (m.type==="ghost" && m.state==="charge"){
+        m.timer-=dt;                                             // 原地站 2 秒蓄力，不能动
+        if (m.timer<=0){ m.state="spit"; m.timer=0.5; }
       } else if (m.type==="ghost" && m.state==="spit"){
         m.timer-=dt;
         if (Math.random()<dt*8) spawnFire(m, ne.x, ne.y);        // 边停边喷
@@ -1207,7 +1210,7 @@
           const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
           if (okX) m.x=nx; if (okY) m.y=ny;
           if (!okX && !okY){ m.angle=Math.random()*Math.PI*2; m.wanderT=0.5+Math.random()*0.5; }   // 撞墙：绕路
-          if (m.type==="ghost" && nd<170){ m.state="spit"; m.timer=0.5; }   // 小幽灵靠近才站桩喷火
+          if (m.type==="ghost" && nd<120){ m.state="charge"; m.timer=2; }   // 靠近 120px 内才停下蓄力
         } else if (m.wanderT>0){     // 绕路中：沿随机方向走一段
           m.wanderT-=dt;
           const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
@@ -1304,7 +1307,7 @@
       const f=fires[i];
       if (!f.landed){
         f.x+=f.vx*dt; f.y+=f.vy*dt; f.t+=dt;
-        if (f.t>0.55 || hitsWall(f.x,f.y,4)){ f.landed=true; f.t=0; }
+        if (f.t>0.4 || hitsWall(f.x,f.y,4)){ f.landed=true; f.t=0; }
       } else f.t+=dt;
       f.life-=dt;
       if (f.life<=0){ fires.splice(i,1); continue; }
@@ -1682,6 +1685,12 @@
       ctx.strokeStyle=`rgba(255,224,102,${(1-p)*0.9})`;
       ctx.lineWidth=3;
       ctx.beginPath(); ctx.arc(0,0,m.r+p*46,0,Math.PI*2); ctx.stroke();
+    }
+    if (m.state==="charge"){                            // 蓄力：黄色聚气圈逐渐收紧
+      const p=1-m.timer/2;
+      ctx.strokeStyle=`rgba(255,180,80,${0.35+0.45*p})`;
+      ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(0,0,m.r+18-12*p,0,Math.PI*2); ctx.stroke();
     }
     const glow=ctx.createRadialGradient(0,0,2,0,0,m.r+14);
     glow.addColorStop(0,`hsla(${g},80%,70%,.55)`); glow.addColorStop(1,`hsla(${g},80%,70%,0)`);
