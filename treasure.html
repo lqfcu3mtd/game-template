@@ -259,6 +259,31 @@
     g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
     c.fillStyle = g; c.fillRect(x-r, y-r, r*2, r*2);
   }
+  function punchCone(c, x, y, r, face) {   // 扇形视野：面朝方向前方 270°，身后 90° 看不见
+    c.save();
+    c.beginPath();
+    c.moveTo(x, y);
+    if (face>0) c.arc(x, y, r, -Math.PI*0.75, Math.PI*0.75);   // 朝右：-135°→135° 顺时针
+    else        c.arc(x, y, r,  Math.PI*0.25, Math.PI*1.75);   // 朝左： 45°→315° 顺时针
+    c.closePath();
+    const lg = c.createRadialGradient(x, y, r*0.1, x, y, r);
+    lg.addColorStop(0, "rgba(0,0,0,1)");
+    lg.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = lg;
+    c.fill();
+    c.restore();
+  }
+  function normAng(a){ while(a>Math.PI) a-=2*Math.PI; while(a<-Math.PI) a+=2*Math.PI; return a; }
+  function isWatched(m){   // 傀儡蛋是否被玩家或任意存活队友"盯着"（面朝方向覆盖到它）
+    const pd = Math.hypot(m.x-player.x, m.y-player.y);
+    if (pd < 260 && Math.abs(normAng(Math.atan2(m.y-player.y, m.x-player.x) - (player.face>0?0:Math.PI))) < Math.PI/3) return true;
+    for (const b of bots){
+      if (b.dead) continue;
+      const ba = b.face>0 ? 0 : Math.PI;
+      if (Math.hypot(m.x-b.x, m.y-b.y) < 220 && Math.abs(normAng(Math.atan2(m.y-b.y, m.x-b.x) - ba)) < Math.PI/3) return true;
+    }
+    return false;
+  }
 
   const STATE = { MENU: 0, PLAYING: 1, PAUSED: 2, OVER: 3, WIN: 4, DEAD: 5 };
   const CELL = { EMPTY: 0, WALL: 1, TREASURE: 2 };
@@ -288,7 +313,7 @@
     huang:  { name:"蛋小黄", body:"#ffe975", shell:"#ffb02e", speedMul:1.12,
               skill:{ name:"滚动", cd:40, dur:1, desc:"滚动 1 秒，速度 +12，可撞飞幽灵" } },
     puff:   { name:"泡芙",   body:"#fff5f8", shell:"#ff8fc2",
-              skill:{ name:"点亮", cd:40, dur:8, desc:"点亮周围 8 秒，照亮身边队友眼前的路" } },
+              skill:{ name:"星星", cd:40, dur:1.6, desc:"朝前方发射一颗星星，照亮前路（穿墙飞行后消失）" } },
     duoduo: { name:"毛哆哆", body:"#f6c98f", shell:"#c9762f",
               skill:{ name:"吃", cd:40, dur:1.5, desc:"张嘴 1.5 秒：靠近吃宝石/小幽灵(+15)/宝箱" } },
     lv:     { name:"蛋小绿", body:"#c8f5b0", shell:"#57c84d", lightMul:1.25,
@@ -870,7 +895,7 @@
                         angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
                         state:"chase", timer:0, hp:2,
                         hue: isPuppet?285+Math.random()*25 : 200+Math.random()*80,
-                        wanderT:0, spawnFx:0.7 });
+                        wanderT:0, spawnFx:0.7, face:1, lungeT:0, biteTarget:null, watched:false });
         addFloat(p.x, p.y-22, isPuppet?"傀儡蛋出现":"小幽灵出现", isPuppet?"#d9a6ff":"#9ecbff");
         return;
       }
@@ -938,7 +963,8 @@
         monsters.push({ type:it.type, x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30,
                         r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
                         angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
-                        hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0 });
+                        hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
+                        face:1, lungeT:0, biteTarget:null, watched:false });
       } else if (it.type==="chest"){
         treasure.x=x; treasure.y=y; chestState="intact"; chestCarrier=null;
       }
@@ -951,7 +977,8 @@
     else if (it.type==="ghost" || it.type==="puppet")
       monsters.push({ type:it.type, x, y, r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
                       angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
-                      hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0 });
+                      hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
+                      face:1, lungeT:0, biteTarget:null, watched:false });
     else if (it.type==="chest"){
       treasure.x=ent.x; treasure.y=ent.y; chestState="intact"; chestCarrier=null;
       addFloat(ent.x, ent.y-24, "吐出宝箱", "#9ecbff");
@@ -980,7 +1007,10 @@
     game.skillCd=ch.skill.cd;
     addFloat(player.x, player.y-26, ch.skill.name+"！", "#ffd76a");
     if (game.char==="huang") game.skillT=ch.skill.dur;                 // 滚动
-    else if (game.char==="puff") lights.push({ e:player, t:8, r:190 }); // 点亮
+    else if (game.char==="puff"){                                    // 星星：朝前发射照亮前路（穿墙，飞远消失）
+      lights.push({ star:true, x:player.x+player.face*30, y:player.y, vx:player.face*340, vy:0, t:1.6, r:135 });
+      game.skillT=1.6;
+    }
     else if (game.char==="duoduo"){                                     // 吃
       if (chestState==="intact" && Math.hypot(player.x-treasure.x,player.y-treasure.y)<56) openChest("你打开了宝箱");
       else if (chestState==="carried" && chestCarrier===player) spitChest(player);
@@ -1232,28 +1262,54 @@
         if (d<nd){ nd=d; ne={x:b.x,y:b.y}; }
       }
       // 小幽灵虚弱循环：追击 → 靠近后原地蓄力2秒 → 喷火0.5秒 → 僵3秒 → 恢复追击
-      // 傀儡蛋：不喷火，缓慢贴身追击，碰到才扣血
-      if (m.stun>0){
+      // 傀儡蛋：被盯着就定住 / 没被盯着快速奔跑 / 面向目标蓄力1秒咬 40 血
+      if (m.type==="puppet"){
+        const watched = isWatched(m);
+        m.watched = watched;
+        if (m.stun>0){
+          m.stun-=dt;
+        } else if (watched){                 // 被玩家/人机注视：定住不动，蓄力取消
+          m.lungeT=0;
+        } else if (m.lungeT>0){              // 蓄力 1 秒：面向目标，结束咬 40
+          m.lungeT-=dt;
+          m.face = ne.x>=m.x ? 1 : -1;
+          if (m.lungeT<=0){
+            if (m.biteTarget) hurt(m.biteTarget, 40);
+            m.lungeT=0; m.biteTarget=null;
+          }
+        } else {                             // 没被注视：快速奔跑追最近的活体
+          if (nd>0.1){
+            const spd = cfg.chase*1.5;       // 跑得很快
+            const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
+            const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
+            if (okX) m.x=nx; if (okY) m.y=ny;
+            m.face = ne.x>=m.x ? 1 : -1;
+            if (nd < m.r+18+8){ m.lungeT=1; m.biteTarget = nd<Math.hypot(player.x-m.x,player.y-m.y) ? ne : player; m.biteTarget = m.biteTarget===ne?ne:player; }  // 够近→面向蓄力
+          }
+        }
+        m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
+        if (m.flash>0) m.flash-=dt;
+        if (m.spawnFx>0) m.spawnFx-=dt;
+      } else if (m.stun>0){
         m.stun-=dt;
-      } else if (m.type==="ghost" && m.state==="charge"){
+      } else if (m.state==="charge"){
         m.timer-=dt;                                             // 原地站 2 秒蓄力，不能动
         if (m.timer<=0){ m.state="spit"; m.timer=0.5; }
-      } else if (m.type==="ghost" && m.state==="spit"){
+      } else if (m.state==="spit"){
         m.timer-=dt;
         if (Math.random()<dt*8) spawnFire(m, ne.x, ne.y);        // 边停边喷
         if (m.timer<=0){ m.state="rest"; m.timer=3; }
-      } else if (m.type==="ghost" && m.state==="rest"){
+      } else if (m.state==="rest"){
         m.timer-=dt;
         if (m.timer<=0){ m.state="chase"; m.timer=0; }
       } else {
         if (td<cfg.detect && td>0.1){
-          const spd = m.type==="puppet" ? cfg.chase*0.62 : cfg.chase;   // 傀儡蛋慢一截
-          const vx=(tx-m.x)/td*spd*dt, vy=(ty-m.y)/td*spd*dt;
+          const vx=(tx-m.x)/td*cfg.chase*dt, vy=(ty-m.y)/td*cfg.chase*dt;
           const nx=m.x+vx, ny=m.y+vy;
           const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
           if (okX) m.x=nx; if (okY) m.y=ny;
           if (!okX && !okY){ m.angle=Math.random()*Math.PI*2; m.wanderT=0.5+Math.random()*0.5; }   // 撞墙：绕路
-          if (m.type==="ghost" && nd<120){ m.state="charge"; m.timer=2; }   // 靠近 120px 内才停下蓄力
+          if (nd<120){ m.state="charge"; m.timer=2; }   // 靠近 120px 内才停下蓄力
         } else if (m.wanderT>0){     // 绕路中：沿随机方向走一段
           m.wanderT-=dt;
           const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
@@ -1270,7 +1326,7 @@
       m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
       if (m.flash>0) m.flash-=dt;
       if (m.spawnFx>0) m.spawnFx-=dt;
-      // 近战撞到玩家：滚动可撞飞、毛哆哆张嘴可吃；傀儡蛋贴脸会扣血
+      // 近战撞到玩家：滚动可撞飞、毛哆哆张嘴可吃；傀儡蛋的近战伤害走"蓄力咬"（40血）
       if (Math.hypot(player.x-m.x,player.y-m.y)<player.r+m.r){
         if (game.char==="huang" && game.skillT>0){
           // 滚动撞飞：只弹开，不掉血不眩晕
@@ -1280,8 +1336,6 @@
           m.stun=0; m.flash=0.35;
         } else if (game.char==="duoduo" && game.eatT>0){
           eatGhost(player, m, game.belly);   // 张嘴状态：碰到就吃
-        } else if (m.type==="puppet" && player.invuln<=0){
-          hurt(player, 20);   // 傀儡蛋：贴脸 -20 血
         }
       }
     }
@@ -1370,7 +1424,9 @@
     // 冒字提示
     for (let i=floatTexts.length-1;i>=0;i--){ const f=floatTexts[i]; f.t-=dt; f.y-=22*dt; if(f.t<=0) floatTexts.splice(i,1); }
     // 点亮光源计时
-    for (let i=lights.length-1;i>=0;i--){ lights[i].t-=dt; if(lights[i].t<=0) lights.splice(i,1); }
+    for (let i=lights.length-1;i>=0;i--){ const L=lights[i]; L.t-=dt;
+      if (L.star){ L.x+=L.vx*dt; L.y+=L.vy*dt; }   // 星星穿墙飞行
+      if (L.t<=0) lights.splice(i,1); }
     // 毛哆哆肚子消化：15 秒后吐在原地
     for (let i=game.belly.length-1;i>=0;i--){
       const it=game.belly[i]; it.t-=dt;
@@ -1438,7 +1494,7 @@
       if (b.cd<=0 && (b.skin===CHARS.lv || threatened || fd<70 || Math.random()<0.004)){
         b.cd=40;
         addFloat(b.x, b.y-24, b.skin.skill.name+"！", "#ffd76a");
-        if (b.skin===CHARS.puff) lights.push({ e:b, t:8, r:190 });  // 点亮
+        if (b.skin===CHARS.puff) lights.push({ star:true, x:b.x+b.face*30, y:b.y, vx:b.face*340, vy:0, t:1.6, r:135 });  // 星星
         else if (b.skin===CHARS.duoduo) b.eatT=b.skin.skill.dur;    // 吃：张嘴
         else if (b.skin===CHARS.huang) b.roll=1;            // 滚动
         else if (b.skin===CHARS.lv){                        // 治疗：百分百给玩家回血
@@ -1520,7 +1576,7 @@
         const it=b.belly[i]; it.t-=dt;
         if (it.t<=0){ spitItem(b, it); b.belly.splice(i,1); }
       }
-      // 与怪物碰撞：滚动撞飞 / 张嘴就吃；傀儡蛋贴脸扣血（小幽灵近战无伤）
+      // 与怪物碰撞：滚动撞飞 / 张嘴就吃（傀儡蛋的近战伤害走"蓄力咬"，贴脸不再自动扣血）
       for (const m of monsters){
         if (Math.hypot(m.x-b.x,m.y-b.y)<b.r+m.r){
           if (b.roll>0){
@@ -1530,8 +1586,6 @@
             m.stun=0; m.flash=0.35;
           } else if (b.skin===CHARS.duoduo && b.eatT>0){
             eatGhost(b, m, b.belly);
-          } else if (m.type==="puppet"){
-            hurt(b, 20);   // 傀儡蛋：贴脸 -20 血
           }
         }
       }
@@ -1761,6 +1815,17 @@
       ctx.strokeStyle=`rgba(255,224,102,${(1-p)*0.9})`;
       ctx.lineWidth=3;
       ctx.beginPath(); ctx.arc(0,0,m.r+p*46,0,Math.PI*2); ctx.stroke();
+    }
+    if (m.watched){                                     // 被盯着：发抖定住 + 头顶"!"
+      const jx=(Math.random()-0.5)*2.2, jy=(Math.random()-0.5)*2.2;
+      ctx.translate(jx, jy);
+      ctx.fillStyle="#ffd76a"; ctx.font="bold 14px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("!", 0, -m.r-24);
+    }
+    if (m.lungeT>0){                                    // 蓄力咬：红色怒视圈 + 红眼放大
+      ctx.strokeStyle=`rgba(255,70,90,${0.4+0.35*Math.sin(t*16)})`;
+      ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(0,0,m.r+7,0,Math.PI*2); ctx.stroke();
     }
     if (m.spawnFx>0){                                   // 刷怪出生扩散圈
       const p=1-m.spawnFx/0.7;
@@ -2076,15 +2141,27 @@
     dctx.fillStyle="rgba(10,8,16,0.97)";
     dctx.fillRect(0,0,W,H_TOT);
     dctx.globalCompositeOperation="destination-out";
-    punch(dctx, player.x, player.y, light);
-    for (const L of lights) punch(dctx, L.e.x, L.e.y, L.r);
+    // 玩家扇形视野：只能看到前面+左右，身后 90° 是黑暗
+    punchCone(dctx, player.x, player.y, light, player.face);
+    punch(dctx, player.x, player.y, 48);          // 脚下小光斑，保证贴脸可见
+    for (const L of lights) punch(dctx, L.star?L.x:L.e.x, L.star?L.y:L.e.y, L.r);
     dctx.globalCompositeOperation="source-over";
     ctx.drawImage(darkCanvas, 0, 0);
-    // 点亮区域的高亮圈
+    // 点亮区域的高亮圈 + 泡芙星星
     for (const L of lights){
+      const lx=L.star?L.x:L.e.x, ly=L.star?L.y:L.e.y;
+      if (L.star){                                // 星星本体
+        const rr=9;
+        ctx.fillStyle="#fff2b0"; ctx.beginPath();
+        for (let i=0;i<10;i++){ const a=i/10*Math.PI*2-Math.PI/2; const rad=i%2?rr*0.45:rr;
+          ctx.lineTo(lx+Math.cos(a)*rad, ly+Math.sin(a)*rad); }
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle="rgba(255,240,180,.5)";
+        ctx.beginPath(); ctx.arc(lx,ly,16+3*Math.sin(t*8),0,Math.PI*2); ctx.fill();
+      }
       ctx.strokeStyle=`rgba(255,220,140,${0.22+0.14*Math.sin(t*5)})`;
       ctx.lineWidth=2;
-      ctx.beginPath(); ctx.arc(L.e.x, L.e.y, L.r*0.55, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(lx, ly, L.r*0.55, 0, Math.PI*2); ctx.stroke();
     }
 
     // 治疗绿环
