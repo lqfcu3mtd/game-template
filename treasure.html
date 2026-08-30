@@ -201,14 +201,14 @@
       <div class="shop-item">
         <b>鱼叉</b><br>
         <span style="font-size:12px;color:#a99fc4">放入背包/快捷栏 · 无限挥砍 · 近战两叉击杀 · 被打死会掉落</span>
-        <div class="item-price">10 惊魂币 / 把</div>
+        <div class="item-price">25000 惊魂币 / 把</div>
         <div class="item-owned">拥有 <b id="harpoonOwned">0</b> 把</div>
         <button class="start" id="buyHarpoon" style="padding:8px 22px;font-size:14px">购买</button>
       </div>
       <div class="shop-item">
         <b>返魂药水</b><br>
         <span style="font-size:12px;color:#a99fc4">复活一位阵亡队友：靠近其尸体引导 5 秒，复活后只剩 50 血</span>
-        <div class="item-price">5 惊魂币 / 瓶</div>
+        <div class="item-price">10000 惊魂币 / 瓶</div>
         <div class="item-owned">拥有 <b id="reviveOwned">0</b> 瓶</div>
         <button class="start" id="buyRevive" style="padding:8px 22px;font-size:14px">购买</button>
       </div>
@@ -400,8 +400,8 @@
   shopMask.addEventListener("click", (e) => { if (e.target===shopMask) shopMask.style.display="none"; });
   document.getElementById("buyHarpoon").addEventListener("click", () => {
     if (hasItem("harpoon")){ document.getElementById("shopMsg").textContent="你已经有一把鱼叉了"; return; }
-    if (inv.coins<10){ document.getElementById("shopMsg").textContent="惊魂币不足，还差 "+(10-inv.coins); return; }
-    inv.coins-=10; saveInv();
+    if (inv.coins<25000){ document.getElementById("shopMsg").textContent="惊魂币不足，还差 "+(25000-inv.coins); return; }
+    inv.coins-=25000; saveInv();
     const where=addItem("harpoon");
     document.getElementById("wallet").textContent=inv.coins;
     document.getElementById("harpoonOwned").textContent="1";
@@ -425,8 +425,8 @@
     document.getElementById("shopMsg").textContent="开通高级会员！小狗来啦，宠物背包 +1，共 8 格";
   });
   document.getElementById("buyRevive").addEventListener("click", () => {
-    if (inv.coins<5){ document.getElementById("shopMsg").textContent="惊魂币不足，还差 "+(5-inv.coins); return; }
-    inv.coins-=5; saveInv();
+    if (inv.coins<10000){ document.getElementById("shopMsg").textContent="惊魂币不足，还差 "+(10000-inv.coins); return; }
+    inv.coins-=10000; saveInv();
     const where=addItem("revive");
     document.getElementById("wallet").textContent=inv.coins;
     updateReviveOwned();
@@ -1102,7 +1102,7 @@
 
   // ===== 撤离金额系统 =====
   function aibiValue(){ return game.hasAibi ? 50000 + game.aibiCaught*5000 : 0; }          // 黄金艾比基础5万+每捕获一只+5千
-  function gameValue(){ return game.haul.reduce((s,t)=>s+t.value,0) + aibiValue() + game.coins*200; }   // 未卖宝物+艾比+惊魂币(1颗=200)
+  function gameValue(){ return game.haul.reduce((s,t)=>s+t.value,0) + aibiValue() + game.coins; }   // 未卖宝物+艾比+惊魂币(1枚=¥1，卖出价即面值)
   function evacuateTarget(){ return MAPS[game.map].evacuate[game.difficulty]; }
   function canEvacuate(){ return gameValue() >= evacuateTarget(); }
   let lastEvacTxt="";
@@ -1135,7 +1135,7 @@
     if (chest.opened) return;
     chest.opened=true;
     const item = chestLoot(chest.qual);
-    game.haul.push({ name:item.name, value:item.value, color:item.color, sell:Math.max(10, Math.round(item.value/500)) });
+    game.haul.push({ name:item.name, value:item.value, color:item.color, sell:item.value });   // 卖出价=宝物面值（1:1）
     game.hasAibi = game.haul.some(t=>t.name==="黄金艾比");
     addFloat(chest.x, chest.y-22, txt+" 获得 "+item.name+" ¥"+item.value, item.color);
     updateEvacHud(); updateHud(); renderHaul();
@@ -1148,7 +1148,7 @@
   function doEvacuate(){   // X 键撤离：胜利
     const total = gameValue();
     const haulTxt = game.haul.length ? game.haul.map(t=>t.name+" ¥"+t.value.toLocaleString()).join("、") : "无宝物";
-    const coinTxt = "惊魂币 ¥"+(game.coins*200).toLocaleString()+"（"+game.coins+"枚）";
+    const coinTxt = "惊魂币 ¥"+game.coins.toLocaleString()+"（"+game.coins+"枚）";
     game.state=STATE.WIN;
     bankCoins();
     finishRound();
