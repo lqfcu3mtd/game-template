@@ -277,10 +277,10 @@
               mech:"carwall", sideDoor:true },   // 大车+车门蓝墙；大门常开；右侧楼梯侧门
     market: { label:"好蛋来超市", accent:"#ffd24a", bg:"#101418", ground:"#1c2630",
               wall:"#37506a", wallTop:"#4a6f93", wallStyle:"shelf",  floater:"120,200,255",
-              mech:"carwall", sideDoor:true, cart:true },   // 超市：路径远，有购物车加速
+              mech:"carwall", sideDoor:true, cart:true, sewer:true },   // 超市：路径远，有购物车加速；外部区井盖下下水道
     asylum: { label:"怪蛋疯人院", accent:"#7cfc9b", bg:"#0c120e", ground:"#16201a",
               wall:"#2f4a36", wallTop:"#3f6347", wallStyle:"bars",   floater:"150,255,170",
-              mech:"carwall", sideDoor:true },
+              mech:"carwall", cart:true, sewer:true, frontHall:true },   // 疯人院：推车+前厅三门（右上楼梯下地下室/左爬楼梯/正门直走）
   };
 
   // ===== 角色配置（含专属技能）=====
@@ -546,7 +546,7 @@
       if (gates[gn].openT<=0 && Math.hypot(player.x-gx, player.y-(GATE_ROW*TILE+TILE/2))<52){ startGateChan(gx, gn); return; }
     }
     // 下水道门（超市）：在走廊内靠近刷卡
-    if (game.theme.cart && game.inSewer && gates.sewer.openT<=0 &&
+    if (game.theme.sewer && game.inSewer && gates.sewer.openT<=0 &&
         Math.hypot(player.x-SEWER_DOOR_X, player.y-(SEWER_Y+SEWER/2))<52){ startGateChan(SEWER_DOOR_X, "sewer", SEWER_Y-8); return; }
   }
   canvas.addEventListener("click", (e) => {
@@ -569,7 +569,7 @@
         }
       }
       // 点击下水道门刷卡（超市下水道走廊左端）
-      if (game.theme.cart && game.inSewer && gates.sewer.openT<=0 &&
+      if (game.theme.sewer && game.inSewer && gates.sewer.openT<=0 &&
           Math.hypot(mx-SEWER_DOOR_X, my-(SEWER_Y+SEWER/2))<44){ startGateChan(SEWER_DOOR_X, "sewer", SEWER_Y-8); return; }
     }
     // 点击购物车：点击人机推的购物车 → 上车（不再靠近自动上）
@@ -733,10 +733,16 @@
       grid[tr][tc]=CELL.TREASURE; clearAround(tr,tc);
       if (!bfsReachable(sr,sc,tr,tc)) continue;
 
-      // 地牢底部封墙，只留大门缺口（城堡另开右侧侧门）
+      // 地牢底部封墙，只留大门缺口（城堡另开右侧侧门；疯人院整行是前厅走廊）
       for (let c=0;c<COLS;c++) grid[GATE_ROW][c]=CELL.WALL;
       grid[GATE_ROW][GATE_COL]=CELL.EMPTY;
       if (game.theme.sideDoor) grid[GATE_ROW][COLS-1]=CELL.EMPTY;
+      if (game.theme.frontHall){                 // 疯人院：底排=前厅，三个门向上进入地牢
+        for (let c=0;c<COLS;c++) grid[GATE_ROW][c]=CELL.EMPTY;   // 前厅横贯走廊
+        grid[GATE_ROW-1][GATE_COL]=CELL.EMPTY;   // 正门：直走向上
+        grid[GATE_ROW-1][1]=CELL.EMPTY;          // 左门：爬楼梯上去
+        grid[GATE_ROW-1][2]=CELL.EMPTY;          // 左门通道
+      }
 
       // 玩家和队友出生在车旁（城堡/超市/疯人院：左下大车里；超市车更远）
       carX = game.theme.mech==="carwall" ? (game.map==="market" ? 80 : 120) : W/2;
@@ -1022,11 +1028,13 @@
     if (game.state!==STATE.PLAYING){ game.healChan=null; game.reviveChan=null; }
 
     // 开场阶段：18 秒后开门，进入大门才开始寻宝
+    // 疯人院：进大门只是到前厅，要走过正门/左门（向上）或右门地下通道才算正式进入
+    const enterY = game.theme.frontHall ? (GATE_ROW-1)*TILE : GATE_ROW*TILE;
     if (game.state===STATE.PLAYING && !game.huntStarted){
       if (game.time>=18){
-        if (player.y < GATE_ROW*TILE){                 // 玩家已进大门
+        if (player.y < enterY){                 // 玩家已正式进入
           game.enterT+=dt;
-          const allIn = bots.every(b=>b.dead || b.y < GATE_ROW*TILE);
+          const allIn = bots.every(b=>b.dead || b.y < enterY);
           if (allIn || game.enterT>=6) startHunt();
         }
       }
@@ -1112,24 +1120,28 @@
       player.y=Math.max(player.r, Math.min(H_TOT-player.r, player.y));
     }
 
-    // 下水道（超市专属）：18 秒后靠近井盖爬下去；走廊里可爬回；门开走进 → 潜入超市
-    if (game.theme.cart && !game.huntStarted && game.time>=18){
+    // 地下通道（超市：外部区井盖下水道；疯人院：前厅右端下楼梯到地下室）
+    // 都是新怪安全区外的支线：门开走进 → 正式潜入，触发寻宝开始
+    if (game.theme.sewer && !game.huntStarted && game.time>=18){
+      const stairY = game.theme.frontHall ? GATE_ROW*TILE+22 : H+OUTER-26;   // 楼梯口所在高度
+      const mapName = game.theme.frontHall ? "疯人院" : "超市";
       if (!game.inSewer){
-        if (Math.hypot(player.x-SEWER_EX, player.y-(H+OUTER-26))<44){
+        if (Math.hypot(player.x-SEWER_EX, player.y-stairY)<44){
           game.inSewer=true;
-          if (game.cartPush) releaseCart(game.cart);          // 下水道推不了车
-          player.x=SEWER_EX-40; player.y=SEWER_Y+SEWER/2;    // 落到井盖左侧，避免立刻触发爬回
-          addFloat(player.x, player.y-26, "爬进下水道", "#9ecbff");
+          if (game.cartPush) releaseCart(game.cart);          // 通道里推不了车
+          player.x=SEWER_EX-40; player.y=SEWER_Y+SEWER/2;    // 落到楼梯口左侧，避免立刻触发爬回
+          addFloat(player.x, player.y-26, game.theme.frontHall?"走下地下室":"爬进下水道", "#9ecbff");
         }
       } else {
-        if (Math.abs(player.x-SEWER_EX)<20 && player.y < SEWER_Y+26){   // 走回井盖正下方 → 爬回去
+        if (Math.abs(player.x-SEWER_EX)<20 && player.y < SEWER_Y+26){   // 走回楼梯口正下方 → 爬回去
           game.inSewer=false;
-          player.x=SEWER_EX; player.y=H+OUTER-26;
-          addFloat(player.x, player.y-26, "爬出下水道", "#9ecbff");
-        } else if (gates.sewer.openT>0 && player.x < SEWER_DOOR_X-10){  // 门开了，走进 → 潜入超市
+          player.x=SEWER_EX; player.y=stairY;
+          addFloat(player.x, player.y-26, game.theme.frontHall?"回到前厅":"爬出下水道", "#9ecbff");
+        } else if (gates.sewer.openT>0 && player.x < SEWER_DOOR_X-10){  // 门开了，走进 → 正式进入
           game.inSewer=false;
-          player.x=GATE_COL*TILE+TILE/2; player.y=GATE_ROW*TILE-40;
-          addFloat(player.x, player.y-26, "从下水道潜入超市！", "#9ecbff");
+          player.x=GATE_COL*TILE+TILE/2;
+          player.y=game.theme.frontHall ? (GATE_ROW-1)*TILE-40 : GATE_ROW*TILE-40;   // 疯人院要越过前厅判定线
+          addFloat(player.x, player.y-26, "从地下通道潜入"+mapName+"！", "#9ecbff");
         }
       }
     }
@@ -1880,8 +1892,23 @@
       ctx.fillStyle="#c9b878"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
       ctx.fillText("侧门→", sx+10, H+4);
     }
-    // 下水道层：超市有井盖+楼梯+走廊+下水道门；其他图是地图外深色带
-    if (game.theme.cart){
+    // 疯人院前厅：三门标识（左=爬楼梯上去 / 中=正门直走 / 右=下地下室楼梯）
+    if (game.theme.frontHall){
+      const fy=GATE_ROW*TILE;
+      ctx.fillStyle="rgba(60,90,70,.35)"; ctx.fillRect(0, fy, W, TILE);   // 前厅地面色调
+      ctx.strokeStyle="rgba(150,255,190,.12)"; ctx.lineWidth=1.5;
+      for (let bx=TILE; bx<W; bx+=TILE){ ctx.beginPath(); ctx.moveTo(bx,fy); ctx.lineTo(bx,fy+TILE); ctx.stroke(); }
+      ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
+      // 左门：向上的台阶
+      ctx.fillStyle="#7a9a8a";
+      for (let i=0;i<3;i++) ctx.fillRect(1*TILE+6, fy+34-i*11, 34, 7);
+      ctx.fillStyle="#c9f0d8"; ctx.fillText("↑ 爬楼梯进入", 1.5*TILE, fy-8);
+      // 正门：直走
+      ctx.fillStyle="#c9f0d8"; ctx.fillText("↑ 正门直走", GATE_COL*TILE+TILE/2, fy-8);
+      ctx.fillStyle="#7cfc9b"; ctx.fillText("疯人院前厅 · 选择入口", W/2, fy+TILE-6);
+    }
+    // 地下通道层：超市=外部区井盖下水道；疯人院=前厅下楼梯的地下室；其他图是地图外深色带
+    if (game.theme.sewer){
       // 走廊
       ctx.fillStyle="#101b17"; ctx.fillRect(SEWER_L-8,SEWER_Y,SEWER_R-SEWER_L+16,SEWER);
       ctx.fillStyle="#2c443a"; ctx.fillRect(SEWER_L-8,SEWER_Y,SEWER_R-SEWER_L+16,7);
@@ -1900,22 +1927,31 @@
         ctx.strokeStyle="#6ecf6e"; ctx.lineWidth=3;
         ctx.strokeRect(SEWER_DOOR_X-9, SEWER_Y+4, 18, SEWER-8);
       }
-      // 井盖 + 楼梯（外部区右下）
-      ctx.fillStyle="#3a3f4a";
-      ctx.save(); ctx.translate(SEWER_EX,H+OUTER-22); ctx.scale(1.8,1);
-      ctx.beginPath(); ctx.arc(0,0,11,0,Math.PI*2); ctx.fill();
-      ctx.restore();
-      ctx.strokeStyle="#5a606e"; ctx.lineWidth=2;
-      ctx.save(); ctx.translate(SEWER_EX,H+OUTER-22); ctx.scale(1.8,1);
-      ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2); ctx.stroke();
-      ctx.restore();
-      ctx.beginPath(); ctx.moveTo(SEWER_EX-14,H+OUTER-22); ctx.lineTo(SEWER_EX+14,H+OUTER-22); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(SEWER_EX,H+OUTER-29); ctx.lineTo(SEWER_EX,H+OUTER-15); ctx.stroke();
-      ctx.fillStyle="#5a6a5f";
-      for (let i=0;i<5;i++) ctx.fillRect(SEWER_EX-8, H+OUTER-16+i*13, 16, 5);   // 向下的梯子
-      ctx.fillStyle="#ffd76a"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
-      ctx.fillText("下水道 ↓", SEWER_EX, H+OUTER-34);
-      ctx.fillText("→ 下水道门", SEWER_DOOR_X+70, SEWER_Y+SEWER/2+4);
+      // 楼梯口：超市=外部区圆形井盖；疯人院=前厅右端向下台阶
+      if (game.theme.frontHall){
+        const sy2=GATE_ROW*TILE+22;
+        ctx.fillStyle="#2a3a33"; ctx.fillRect(SEWER_EX-26, sy2-20, 52, 40);   // 楼梯井口
+        ctx.fillStyle="#5a6a5f";
+        for (let i=0;i<4;i++) ctx.fillRect(SEWER_EX-20, sy2-14+i*9, 40, 5);   // 向下台阶
+        ctx.fillStyle="#ffd76a"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
+        ctx.fillText("地下室楼梯 ↓", SEWER_EX, sy2-26);
+      } else {
+        ctx.fillStyle="#3a3f4a";
+        ctx.save(); ctx.translate(SEWER_EX,H+OUTER-22); ctx.scale(1.8,1);
+        ctx.beginPath(); ctx.arc(0,0,11,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+        ctx.strokeStyle="#5a606e"; ctx.lineWidth=2;
+        ctx.save(); ctx.translate(SEWER_EX,H+OUTER-22); ctx.scale(1.8,1);
+        ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+        ctx.beginPath(); ctx.moveTo(SEWER_EX-14,H+OUTER-22); ctx.lineTo(SEWER_EX+14,H+OUTER-22); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(SEWER_EX,H+OUTER-29); ctx.lineTo(SEWER_EX,H+OUTER-15); ctx.stroke();
+        ctx.fillStyle="#5a6a5f";
+        for (let i=0;i<5;i++) ctx.fillRect(SEWER_EX-8, H+OUTER-16+i*13, 16, 5);   // 向下的梯子
+        ctx.fillStyle="#ffd76a"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
+        ctx.fillText("下水道 ↓", SEWER_EX, H+OUTER-34);
+      }
+      ctx.fillText(game.theme.frontHall ? "→ 地下室门" : "→ 下水道门", SEWER_DOOR_X+70, SEWER_Y+SEWER/2+4);
       ctx.textAlign="left";
     } else {
       ctx.fillStyle="rgba(0,0,0,.4)"; ctx.fillRect(0,SEWER_Y,W,SEWER);   // 非超市图：地图外深色
@@ -2160,7 +2196,7 @@
       ctx.textAlign="left";
     }
     // 下水道门提示（超市走廊左端）
-    if (game.theme.cart && game.inSewer && gates.sewer.openT<=0 && !(game.gateChan && game.gateChan.by==="player") &&
+    if (game.theme.sewer && game.inSewer && gates.sewer.openT<=0 && !(game.gateChan && game.gateChan.by==="player") &&
         Math.hypot(player.x-SEWER_DOOR_X, player.y-(SEWER_Y+SEWER/2))<54){
       ctx.fillStyle="#ffd76a"; ctx.font="bold 12px sans-serif"; ctx.textAlign="center";
       ctx.fillText("点击进门鉴（或按 E）", SEWER_DOOR_X, SEWER_Y-12);
