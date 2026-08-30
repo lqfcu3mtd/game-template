@@ -212,6 +212,13 @@
         <button class="start" id="buyRevive" style="padding:8px 22px;font-size:14px">购买</button>
       </div>
       <div class="shop-item">
+        <b>地窖徽章</b><br>
+        <span style="font-size:12px;color:#a99fc4">装备到快捷栏后按 U 使用：瞬间传送回车里（每次使用需 45000 惊魂币维修）</span>
+        <div class="item-price">20000 惊魂币 / 枚</div>
+        <div class="item-owned">拥有 <b id="badgeOwned">0</b> 枚</div>
+        <button class="start" id="buyBadge" style="padding:8px 22px;font-size:14px">购买</button>
+      </div>
+      <div class="shop-item">
         <b>低级会员</b><br>
         <span style="font-size:12px;color:#a99fc4">快捷栏 +1 格（共 7 格）</span>
         <div class="item-price">20 惊魂币</div>
@@ -449,8 +456,20 @@
     updateReviveOwned();
     document.getElementById("shopMsg").textContent = where ? "购买成功！已放入"+(where==="hot"?"快捷栏":"背包")+"，靠近尸体按 U 使用" : "背包满了！";
   });
+  document.getElementById("buyBadge").addEventListener("click", () => {
+    if (hasItem("badge")){ document.getElementById("shopMsg").textContent="你已经有一枚地窖徽章了"; return; }
+    if (inv.coins<20000){ document.getElementById("shopMsg").textContent="惊魂币不足，还差 "+(20000-inv.coins); return; }
+    inv.coins-=20000; saveInv();
+    const where=addItem("badge");
+    document.getElementById("wallet").textContent=inv.coins;
+    updateBadgeOwned();
+    document.getElementById("shopMsg").textContent = where ? "购买成功！已放入"+(where==="hot"?"快捷栏":"背包")+"，装备后按 U 传送回车里（每次使用需 45000 维修）" : "背包满了！";
+  });
   function updateReviveOwned(){
     document.getElementById("reviveOwned").textContent = invSlots.filter(s=>s && s.type==="revive").length;
+  }
+  function updateBadgeOwned(){
+    document.getElementById("badgeOwned").textContent = invSlots.filter(s=>s && s.type==="badge").length;
   }
   function updateMemberUI(){
     document.getElementById("memberBasicOwned").textContent = inv.member==="none" ? "" : (inv.member==="basic"?"已开通":"（已含）");
@@ -462,6 +481,7 @@
     document.getElementById("wallet").textContent=inv.coins;
     document.getElementById("harpoonOwned").textContent=hasItem("harpoon")?"1":"0";
     updateReviveOwned();
+    updateBadgeOwned();
     document.getElementById("shopMsg").textContent="";
     updateMemberUI();
     shopMask.style.display="flex";
@@ -478,9 +498,10 @@
   const petN = () => (inv.member==="premium" ? 1 : 0);
   const potionSVG = '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M9 3 h6 v3 c3 2 4 4 4 7 a7 7 0 0 1 -14 0 c0 -3 1 -5 4 -7 z" fill="#7cfc9b" stroke="#2f6b3a" stroke-width="1.5"/><rect x="10.5" y="1" width="3" height="3" fill="#fff2c9"/><path d="M12 10 v6 M9 13 h6" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/></svg>';
   const treasureSVG = (color) => '<svg viewBox="0 0 24 24" width="24" height="24"><rect x="7" y="7" width="10" height="10" fill="'+(color||"#ffd24a")+'" transform="rotate(45 12 12)" stroke="#fff2c9" stroke-width="1.2"/><circle cx="12" cy="12" r="2.2" fill="#fff2c9"/></svg>';
+  const badgeSVG = '<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="9" fill="#8a5a2a" stroke="#ffd76a" stroke-width="2"/><circle cx="12" cy="12" r="5.5" fill="none" stroke="#ffd76a" stroke-width="1.2"/><path d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3" stroke="#ffd76a" stroke-width="1.5"/><circle cx="12" cy="12" r="2" fill="#fff2c9"/></svg>';
   const _it = (v) => (typeof v==="string" ? {type:v} : v);
-  const itemIcon = (item) => { const it=_it(item); if (it.type==="harpoon") return harpoonSVG; if (it.type==="revive") return potionSVG; if (it.type==="treasure") return treasureSVG(it.color); return ""; };
-  const itemName = (item) => { const it=_it(item); if (it.type==="harpoon") return "鱼叉"; if (it.type==="revive") return "返魂药水"; if (it.type==="treasure") return it.name||"宝物"; return "物品"; };
+  const itemIcon = (item) => { const it=_it(item); if (it.type==="harpoon") return harpoonSVG; if (it.type==="revive") return potionSVG; if (it.type==="badge") return badgeSVG; if (it.type==="treasure") return treasureSVG(it.color); return ""; };
+  const itemName = (item) => { const it=_it(item); if (it.type==="harpoon") return "鱼叉"; if (it.type==="revive") return "返魂药水"; if (it.type==="badge") return "地窖徽章"; if (it.type==="treasure") return it.name||"宝物"; return "物品"; };
   const hasItem = (type) => invSlots.slice(0, petStart()+petN()).some(s=>s && s.type===type);
   const hasInHotbar = (type) => invSlots.slice(0, hotN()).some(s=>s && s.type===type);
   function addItem(item){
@@ -2062,7 +2083,22 @@
       addFloat(player.x, player.y-26, "正在复活 "+dead.skin.name+"…", "#7cfc9b");
       return;
     }
+    if (item.type==="badge"){ useBadge(); return; }   // 地窖徽章：传送回车里（需 45000 维修）
     addFloat(player.x, player.y-26, "这个物品不能使用", "#ff8888");
+  }
+  function useBadge(){   // 地窖徽章：消耗 45000 惊魂币维修，瞬间传送回车里
+    if (inv.coins<45000){ addFloat(player.x, player.y-26, "惊魂币不足，维修徽章需要 45000", "#ff8888"); return; }
+    inv.coins-=45000; saveInv();
+    // 清理进行中的状态
+    game.healChan=null; game.reviveChan=null; game.gateChan=null;
+    if (game.ridingCart) releaseCart(game.ridingCart);
+    if (game.cartPush) releaseCart(game.cart);
+    game.inSewer=false;
+    // 传送回车里（车周围，安全区）
+    player.x=carX; player.y=carY; player.invuln=1.2; player.jumpT=0;
+    addFloat(carX, carY-30, "地窖徽章传送回车里！", "#ffd76a");
+    addFloat(player.x, player.y-20, "维修 -45000", "#ff8888");
+    updateHud(); updateEvacHud();
   }
   function throwEquipped(){   // T 键：把手上的物品扔出去（落地变回可捡掉落）
     if (game.state!==STATE.PLAYING) return;
