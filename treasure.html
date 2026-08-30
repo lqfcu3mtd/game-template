@@ -2239,11 +2239,11 @@
     ctx.restore();
   }
 
-  function drawCat(m){   // 偷偷猫：隐身时半透明（只见猫眼），现身时完整猫咪
+  function drawCat(m){   // 偷偷猫：不隐身，全程可见（潜行接近 → 现形扑偷）
     ctx.save(); ctx.translate(m.x, m.y);
     const t=performance.now()/1000;
-    const vis = m.visibleT>0 || m.flash>0;
-    ctx.globalAlpha = vis ? 1 : 0.16;
+    const vis = true;   // 偷偷猫不会隐身：始终完整可见
+    ctx.globalAlpha = 1;
     // 尾巴（摆动）
     ctx.strokeStyle = vis ? "#5a3a6a" : "#5a3a6a";
     ctx.lineWidth=3;
