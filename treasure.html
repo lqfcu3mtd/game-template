@@ -595,17 +595,17 @@
       btn.addEventListener("click", ()=>{
         if (game.state!==STATE.PLAYING) return;
         if (!isAtCar()){ addFloat(player.x, player.y-26, "回到车里才能上交宝物", "#ffd76a"); return; }
-        inv.coins+=t.sell; game.haul.splice(i,1);
+        game.coins+=t.sell; game.haul.splice(i,1);   // 上交：宝物→本局惊魂币（计入撤离，局末入钱包）
         game.hasAibi = game.haul.some(x=>x.name==="黄金艾比");
-        saveInv(); updateHud(); updateEvacHud(); renderHaul();
-        addFloat(player.x, player.y-26, "上交 "+t.name+" +"+t.sell+" 惊魂币", "#ffd76a");
+        updateHud(); updateEvacHud(); renderHaul();
+        addFloat(player.x, player.y-26, "上交 "+t.name+" +"+t.sell+" 惊魂币（计入撤离）", "#7cfc9b");
       });
       row.appendChild(nm); row.appendChild(val); row.appendChild(btn);
       el.appendChild(row);
     });
     const tip=document.createElement("div");
     tip.style.cssText="font-size:11px;color:#8a7fa8;margin-top:6px;text-align:center";
-    tip.textContent = atCar ? "宝物可上交换惊魂币；未上交的留在包里（本局结束消失）" : "需要回到车里才能上交宝物 · 未上交的宝物留在包里";
+    tip.textContent = atCar ? "宝物上交换惊魂币（计入撤离价值）；未上交的留在包里" : "需要回到车里才能上交宝物 · 未上交的宝物留在包里（不计撤离价值）";
     el.appendChild(tip);
     el.style.display = haulOpen ? "flex" : "none";
     document.getElementById("haulBtn").textContent = haulOpen ? "收起宝物" : "宝物("+game.haul.length+")";
@@ -1132,16 +1132,19 @@
   // ===== 撤离金额系统 =====
   function isAtCar(){ return Math.hypot(player.x-carX, player.y-carY) < 110; }   // 是否回到车里（撤离/上交宝物都要在这）
   function aibiValue(){ return game.hasAibi ? 50000 + game.aibiCaught*5000 : 0; }          // 黄金艾比基础5万+每捕获一只+5千
-  function gameValue(){ return game.haul.reduce((s,t)=>s+t.value,0) + aibiValue() + game.coins; }   // 包里宝物+艾比+惊魂币(1枚=¥1)
+  function bagValue(){ return game.haul.reduce((s,t)=>s+t.value,0); }                       // 包里未上交宝物价值
+  function gameValue(){ return aibiValue() + game.coins; }   // 撤离价值=已上交的惊魂币+艾比（包里宝物回到车里上交后才计入）
   function evacuateTarget(){ return MAPS[game.map].evacuate[game.difficulty]; }
   function canEvacuate(){ return gameValue() >= evacuateTarget(); }
   let lastEvacTxt="";
   function updateEvacHud(){
     const el=document.getElementById("evac");
     if (!el) return;
+    const base = gameValue();
+    const bv = bagValue();
     const txt = canEvacuate()
-      ? "撤离 ¥"+gameValue().toLocaleString()+" 目标达成 ✓ 回车里按X撤离"
-      : "撤离 ¥"+gameValue().toLocaleString()+" / ¥"+evacuateTarget().toLocaleString();
+      ? "撤离 ¥"+base.toLocaleString()+" 目标达成 ✓ 回车里按X撤离"
+      : "撤离 ¥"+base.toLocaleString()+" / ¥"+evacuateTarget().toLocaleString() + (bv>0 ? " · 包里宝物+¥"+bv.toLocaleString()+"(未上交)" : "");
     if (txt!==lastEvacTxt){ lastEvacTxt=txt; el.textContent=txt; }
   }
 
@@ -1172,7 +1175,7 @@
     if (canEvacuate()){
       addFloat(chest.x, chest.y-44, "撤离金额已达成！回到车里按 X 撤离", "#7cfc9b");
     } else {
-      addFloat(chest.x, chest.y-44, "还差 ¥"+(evacuateTarget()-gameValue()).toLocaleString(), "#9ecbff");
+      addFloat(chest.x, chest.y-44, "宝物已入包 · 回到车里上交计入撤离", "#9ecbff");
     }
   }
   function gainTreasure(t, it){   // 捡到地上宝物：进宝物清单（毛哆哆吃下的会随死亡掉落）
@@ -1188,15 +1191,16 @@
     addFloat(t.x, t.y-22, "捡到宝物 "+it.name+" ¥"+it.value, it.color);
   }
   function doEvacuate(){   // X 键撤离：胜利
-    const total = gameValue();
+    const haulV = bagValue();
+    const coinV = game.coins + aibiValue();
+    const total = haulV + coinV;
     const haulTxt = game.haul.length ? game.haul.map(t=>t.name+" ¥"+t.value.toLocaleString()).join("、") : "无宝物";
-    const coinTxt = "惊魂币 ¥"+game.coins.toLocaleString()+"（"+game.coins+"枚）";
+    const coinTxt = "上交惊魂币 ¥"+game.coins.toLocaleString() + (game.hasAibi ? " + 黄金艾比 ¥"+aibiValue().toLocaleString()+"（捕获"+game.aibiCaught+"只）" : "");
     game.state=STATE.WIN;
     bankCoins();
     finishRound();
-    const aibi = game.hasAibi ? " + 黄金艾比(¥"+aibiValue().toLocaleString()+",捕获"+game.aibiCaught+"只)" : "";
     game.winner="撤离成功！";
-    showOverlay("撤离成功！", "宝物清单："+haulTxt+"<br>"+coinTxt+" · 总计 ¥"+total.toLocaleString()+" / 目标 ¥"+evacuateTarget().toLocaleString()+aibi+" · 用时 "+Math.floor(game.time)+" 秒","再玩一次",true);
+    showOverlay("撤离成功！", "宝物清单："+haulTxt+"<br>"+coinTxt+" · 总计 ¥"+total.toLocaleString()+" / 目标 ¥"+evacuateTarget().toLocaleString()+" · 用时 "+Math.floor(game.time)+" 秒","再玩一次",true);
   }
   function eatGhost(eater, m, belly){
     if (m.r >= eater.r+8){ addFloat(m.x, m.y-20, "吃不掉！", "#ff8888"); return; }
@@ -2388,7 +2392,7 @@
       ctx.lineWidth=2.5;
       ctx.beginPath(); ctx.arc(carX, carY, 40, 0, Math.PI*2); ctx.stroke();
       ctx.fillStyle="#7cfc9b"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
-      ctx.fillText("已回车里 · 可上交宝物"+(canEvacuate()?" · 按 X 撤离":""), carX, carY+54);
+      ctx.fillText(canEvacuate() ? "已回车里 · 按 X 撤离！" : "已回车里 · 上交宝物换惊魂币（计入撤离）", carX, carY+54);
       ctx.textAlign="left";
     }
     // 城堡侧门：右侧楼梯 + 路牌
