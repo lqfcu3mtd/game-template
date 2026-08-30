@@ -265,9 +265,9 @@
 
   // ===== 难度配置 =====
   const DIFF = {
-    easy:   { label:"简单", lives:3, monsters:2, puppets:1, chase:80,  detect:150, wander:46 },
-    normal: { label:"普通", lives:3, monsters:3, puppets:1, chase:104, detect:185, wander:52 },
-    hard:   { label:"困难", lives:2, monsters:5, puppets:2, chase:132, detect:235, wander:58 },
+    easy:   { label:"简单", lives:3, chase:80,  detect:150, wander:46 },
+    normal: { label:"普通", lives:3, chase:104, detect:185, wander:52 },
+    hard:   { label:"困难", lives:2, chase:132, detect:235, wander:58 },
   };
 
   // ===== 地图主题 =====
@@ -299,7 +299,7 @@
     state: STATE.MENU, hp: 100, gems: 0, time: 0, winner: "",
     eatT: 0, belly: [], healFx: 0, swingFx: 0, healChan: null, reviveChan: null,
     spectate: 0, potReviveT: 0, huntStarted: false, enterT: 0, roundCounted: false,
-    carOpen: false, cartPush: false, cartMode: false, gateChan: null, ridingCart: null, inSewer: false,   // 车门 / 购物车 / 进门鉴 / 下水道
+    carOpen: false, cartPush: false, cartMode: false, gateChan: null, ridingCart: null, inSewer: false, spawnT: 0,   // 车门 / 购物车 / 进门鉴 / 下水道 / 刷怪计时
     teammates: ["puff","duoduo","lv"], matesCustomized: false, mateCount: 3,
     difficulty: "easy", map: "castle", char: "huang",
     cfg: DIFF.normal, theme: MAPS.castle, skin: CHARS.huang,
@@ -818,33 +818,30 @@
     return false;
   }
 
-  // ===== 进入大门后开始寻宝 =====
-  function spawnMonsters(){
-    const cfg=game.cfg;
-    const sr=(ROWS/2)|0, sc=(COLS/2)|0;
+  // ===== 无限刷怪：进图后开局安全，怪随时间越来越多 =====
+  const MONSTER_CAP = 25;                       // 同屏怪物上限
+  function nextSpawnInterval(){                 // 刷怪间隔随时间缩短：8s → 最低 3.5s
+    return Math.max(3.5, 8 - game.time*0.012);
+  }
+  function spawnWaveMonster(){
     let empties=[];
     for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
       if (grid[r][c]===CELL.EMPTY) empties.push({r,c});
-    shuffle(empties);
-    let ei=0;
-    for (let k=0;k<cfg.monsters && ei<empties.length;k++){
-      let cell=null;
-      while (ei<empties.length){ const e=empties[ei++];
-        if (Math.abs(e.r-sr)+Math.abs(e.c-sc) > 6){ cell=e; break; } }
-      if (!cell) cell=empties[(Math.random()*empties.length)|0];
-      const p=tileCenter(cell.r,cell.c);
-      monsters.push({ type:"ghost", x:p.x, y:p.y, r:13+Math.random()*5, angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
-                      state:"chase", timer:0, hp:2, hue:200+Math.random()*80, wanderT:0 });
-    }
-    // 傀儡蛋：近战贴脸怪（不喷火，碰到就 -20）
-    for (let k=0;k<cfg.puppets && ei<empties.length;k++){
-      let cell=null;
-      while (ei<empties.length){ const e=empties[ei++];
-        if (Math.abs(e.r-sr)+Math.abs(e.c-sc) > 6){ cell=e; break; } }
-      if (!cell) cell=empties[(Math.random()*empties.length)|0];
-      const p=tileCenter(cell.r,cell.c);
-      monsters.push({ type:"puppet", x:p.x, y:p.y, r:16+Math.random()*3, angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
-                      state:"chase", timer:0, hp:2, hue:285+Math.random()*25, wanderT:0 });
+    if (!empties.length) return;
+    for (let tries=0;tries<24;tries++){
+      const e=empties[(Math.random()*empties.length)|0];
+      const p=tileCenter(e.r,e.c);
+      if (Math.hypot(p.x-player.x, p.y-player.y) > 190){       // 离玩家远一点刷
+        const isPuppet = Math.random()<0.3;
+        monsters.push({ type: isPuppet?"puppet":"ghost",
+                        x:p.x, y:p.y, r: isPuppet?16+Math.random()*3 : 13+Math.random()*5,
+                        angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
+                        state:"chase", timer:0, hp:2,
+                        hue: isPuppet?285+Math.random()*25 : 200+Math.random()*80,
+                        wanderT:0, spawnFx:0.7 });
+        addFloat(p.x, p.y-22, isPuppet?"傀儡蛋出现":"小幽灵出现", isPuppet?"#d9a6ff":"#9ecbff");
+        return;
+      }
     }
   }
   function releaseCart(c){
@@ -856,7 +853,7 @@
   function startHunt(){
     game.huntStarted=true;
     for (const c of carts) releaseCart(c);   // 购物车不能进超市
-    spawnMonsters();
+    game.spawnT=6;                           // 进图后 6 秒安全期，然后开始刷怪
     addFloat(player.x, player.y-26, "寻宝开始！", "#ffd76a");
   }
 
@@ -869,7 +866,7 @@
     game.hp=100;
     game.gems=0; game.time=0; game.skillCd=0; game.skillT=0; game.scareFx=0; game.winner="";
     game.eatT=0; game.belly=[]; game.swingFx=0; game.healChan=null; game.reviveChan=null; chestState="intact"; chestCarrier=null;
-    game.huntStarted=false; game.enterT=0; game.roundCounted=false; game.carOpen=false;
+    game.huntStarted=false; game.enterT=0; game.roundCounted=false; game.carOpen=false; game.spawnT=0;
     generateLevel();
     player.x=player.startX; player.y=player.startY; player.vx=0; player.vy=0; player.invuln=0;
     updateHud(); hideOverlay();
@@ -1032,6 +1029,14 @@
           const allIn = bots.every(b=>b.dead || b.y < GATE_ROW*TILE);
           if (allIn || game.enterT>=6) startHunt();
         }
+      }
+    }
+    // 无限刷怪：间隔随时间缩短（8s→3.5s），同屏上限 25 只
+    if (game.huntStarted && game.state===STATE.PLAYING){
+      game.spawnT-=dt;
+      if (game.spawnT<=0){
+        if (monsters.length<MONSTER_CAP) spawnWaveMonster();
+        game.spawnT=nextSpawnInterval();
       }
     }
     // 超市购物车触发：玩家推车或坐上人机的车 → 全员开始推车；靠近人机的车自动坐上
@@ -1226,6 +1231,7 @@
       }
       m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
       if (m.flash>0) m.flash-=dt;
+      if (m.spawnFx>0) m.spawnFx-=dt;
       // 近战撞到玩家：滚动可撞飞、毛哆哆张嘴可吃；傀儡蛋贴脸会扣血
       if (Math.hypot(player.x-m.x,player.y-m.y)<player.r+m.r){
         if (game.char==="huang" && game.skillT>0){
@@ -1686,6 +1692,12 @@
       ctx.lineWidth=3;
       ctx.beginPath(); ctx.arc(0,0,m.r+p*46,0,Math.PI*2); ctx.stroke();
     }
+    if (m.spawnFx>0){                                   // 刷怪出生扩散圈
+      const p=1-m.spawnFx/0.7;
+      ctx.strokeStyle=`rgba(255,150,200,${(1-p)*0.85})`;
+      ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(0,0,m.r+p*34,0,Math.PI*2); ctx.stroke();
+    }
     if (m.state==="charge"){                            // 蓄力：黄色聚气圈逐渐收紧
       const p=1-m.timer/2;
       ctx.strokeStyle=`rgba(255,180,80,${0.35+0.45*p})`;
@@ -1711,6 +1723,12 @@
       ctx.strokeStyle=`rgba(255,224,102,${(1-p)*0.9})`;
       ctx.lineWidth=3;
       ctx.beginPath(); ctx.arc(0,0,m.r+p*46,0,Math.PI*2); ctx.stroke();
+    }
+    if (m.spawnFx>0){                                   // 刷怪出生扩散圈
+      const p=1-m.spawnFx/0.7;
+      ctx.strokeStyle=`rgba(255,150,200,${(1-p)*0.85})`;
+      ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(0,0,m.r+p*34,0,Math.PI*2); ctx.stroke();
     }
     const glow=ctx.createRadialGradient(0,0,2,0,0,m.r+16);
     glow.addColorStop(0,"hsla(275,60%,55%,.5)"); glow.addColorStop(1,"hsla(275,60%,55%,0)");
