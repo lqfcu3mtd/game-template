@@ -705,6 +705,19 @@
     }
     return false;
   }
+  function reachableMap(sr, sc) {   // 返回从 (sr,sc) 可达的所有格子（二维 bool）
+    const vis = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+    const q = [[sr, sc]]; vis[sr][sc] = true;
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    while (q.length) {
+      const [r, c] = q.shift();
+      for (const [dr, dc] of dirs) {
+        const nr = r + dr, nc = c + dc;
+        if (nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!vis[nr][nc]&&grid[nr][nc]!==CELL.WALL) { vis[nr][nc]=true; q.push([nr,nc]); }
+      }
+    }
+    return vis;
+  }
   function clearAround(r, c) {
     for (let dr=-1; dr<=1; dr++) for (let dc=-1; dc<=1; dc++) {
       const nr=r+dr, nc=c+dc;
@@ -731,7 +744,6 @@
       }
       const tr=best.r, tc=best.c;
       grid[tr][tc]=CELL.TREASURE; clearAround(tr,tc);
-      if (!bfsReachable(sr,sc,tr,tc)) continue;
 
       // 地牢底部封墙，只留大门缺口（城堡另开右侧侧门；疯人院整行是前厅走廊）
       for (let c=0;c<COLS;c++) grid[GATE_ROW][c]=CELL.WALL;
@@ -743,6 +755,20 @@
         grid[GATE_ROW-1][1]=CELL.EMPTY;          // 左门：爬楼梯上去
         grid[GATE_ROW-1][2]=CELL.EMPTY;          // 左门通道
       }
+
+      // ===== 关键修复：打通所有入口的通道（门上方的墙必须清掉，否则进图被堵死）=====
+      const openCols = [GATE_COL];
+      if (game.theme.sideDoor) openCols.push(COLS-1);
+      if (game.theme.frontHall) openCols.push(1, 2);
+      for (const cc of openCols)
+        for (let rr=GATE_ROW-1; rr>=Math.max(0,GATE_ROW-2); rr--) grid[rr][cc]=CELL.EMPTY;
+      if (game.theme.frontHall)                    // 疯人院：前厅上方一横行贯通，左门/正门互通
+        for (let cc=0; cc<=7; cc++) grid[GATE_ROW-2][cc]=CELL.EMPTY;
+
+      // ===== 关键修复：从入口校验宝箱可达（封墙后的最终网格），不可达就重roll =====
+      const entryR = game.theme.frontHall ? GATE_ROW-2 : GATE_ROW-1;
+      const reach = reachableMap(entryR, GATE_COL);
+      if (!reach[tr][tc]) continue;
 
       // 玩家和队友出生在车旁（城堡/超市/疯人院：左下大车里；超市车更远）
       carX = game.theme.mech==="carwall" ? (game.map==="market" ? 80 : 120) : W/2;
@@ -759,7 +785,7 @@
 
       let empties=[];
       for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
-        if (grid[r][c]===CELL.EMPTY && !(r===sr&&c===sc)) empties.push({r,c});
+        if (grid[r][c]===CELL.EMPTY && !(r===sr&&c===sc) && reach[r][c]) empties.push({r,c});   // 只放可达格，避免宝石刷在围墙里
       shuffle(empties);
 
       monsters=[];   // 进入大门后才刷小幽灵
