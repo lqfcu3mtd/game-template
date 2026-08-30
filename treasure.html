@@ -406,7 +406,7 @@
   let grid = [];
   let player = { x: 0, y: 0, r: 14, face: 1, invuln: 0, jumpT: 0, startX: 0, startY: 0 };
   let chests = [];                              // 宝箱数组：{x,y,qual,opened,carried}
-  let monsters = [], coins = [], groundT = [], bots = [], floaters = [], floatTexts = [], lights = [], fires = [], drops = [], throwns = [];
+  let monsters = [], coins = [], groundT = [], bots = [], floaters = [], floatTexts = [], lights = [], fires = [], waves = [], drops = [], throwns = [];
   let puppy = null;   // 高级会员的小狗
   let mouse = { x: 0, y: 0, seen: false };   // 鼠标位置（用于瞄准扔东西）
 
@@ -986,6 +986,7 @@
       floaters=[];
       lights=[];
       fires=[];
+      waves=[];
       drops=[];
       throwns=[];
       for (let i=0;i<18;i++) floaters.push({ x:Math.random()*W, y:Math.random()*H, s:0.3+Math.random()*0.6, sp:6+Math.random()*14, a:0.05+Math.random()*0.12 });
@@ -1056,18 +1057,22 @@
       const e=empties[(Math.random()*empties.length)|0];
       const p=tileCenter(e.r,e.c);
       if (Math.hypot(p.x-player.x, p.y-player.y) > 190){       // 离玩家远一点刷
-        const roll = Math.random();                       // 幽灵60% / 偷偷猫20% / 傀儡蛋20%
-        const isCat = roll<0.2, isPuppet = roll>=0.2 && roll<0.4;
-        const mtype = isCat?"cat":(isPuppet?"puppet":"ghost");
+        // 古堡/超市：幽灵55% / 傀儡蛋15% / 偷偷猫15% / 哈基米15%；疯人院：幽灵60% / 偷偷猫20% / 傀儡蛋20%（无哈基米）
+        const roll=Math.random();
+        let mtype;
+        if (game.map!=="asylum") mtype = roll<0.55?"ghost":(roll<0.70?"puppet":(roll<0.85?"cat":"hajime"));
+        else mtype = roll<0.60?"ghost":(roll<0.80?"cat":"puppet");
+        const isPuppet=mtype==="puppet", isHajime=mtype==="hajime";
         monsters.push({ type: mtype,
-                        x:p.x, y:p.y, r: isPuppet?16+Math.random()*3 : 13+Math.random()*5,
+                        x:p.x, y:p.y, r: isPuppet?16+Math.random()*3 : (isHajime?14+Math.random()*4 : 13+Math.random()*5),
                         angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
-                        state:"chase", timer:0, hp:2,
+                        state:"chase", timer:0, hp:isHajime?3:2,
                         hue: isPuppet?285+Math.random()*25 : 200+Math.random()*80,
                         wanderT:0, spawnFx:0.7, face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0,
                         visibleT:0, stealthT:0 });
-        addFloat(p.x, p.y-22, mtype==="cat"?"偷偷猫出现":(mtype==="puppet"?"傀儡蛋出现":"小幽灵出现"),
-                 mtype==="cat"?"#d9a6ff":(mtype==="puppet"?"#d9a6ff":"#9ecbff"));
+        const nm = mtype==="cat"?"偷偷猫":(mtype==="puppet"?"傀儡蛋":(mtype==="hajime"?"哈基米":"小幽灵"));
+        addFloat(p.x, p.y-22, nm+"出现",
+                 mtype==="cat"||mtype==="puppet"?"#d9a6ff":(mtype==="hajime"?"#ffb26a":"#9ecbff"));
         return;
       }
     }
@@ -1217,9 +1222,9 @@
   function eatGhost(eater, m, belly){
     if (m.r >= eater.r+8){ addFloat(m.x, m.y-20, "吃不掉！", "#ff8888"); return; }
     m.dead=true;
-    belly.push({type: m.type==="puppet"?"puppet":(m.type==="cat"?"cat":"ghost"), t:15});
+    belly.push({type: m.type==="puppet"?"puppet":(m.type==="cat"?"cat":(m.type==="hajime"?"hajime":"ghost")), t:15});
     game.coins+=15; updateHud();
-    const nm = m.type==="puppet"?"傀儡蛋":(m.type==="cat"?"偷偷猫":"小幽灵");
+    const nm = m.type==="puppet"?"傀儡蛋":(m.type==="cat"?"偷偷猫":(m.type==="hajime"?"哈基米":"小幽灵"));
     addFloat(m.x, m.y-18, "吃掉"+nm+" +15", "#ffd76a");
   }
   function spawnFire(m, tx, ty){   // 小幽灵喷的小火焰：会落地成火堆，靠近/踩上 -20（射程已缩短）
@@ -1233,10 +1238,10 @@
     for (const it of belly){
       if (it.type==="coin"){
         coins.push({ x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30, r:8, taken:false, ph:Math.random()*6 });
-      } else if (it.type==="ghost" || it.type==="puppet" || it.type==="cat"){
+      } else if (it.type==="ghost" || it.type==="puppet" || it.type==="cat" || it.type==="hajime"){
         monsters.push({ type:it.type, x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30,
-                        r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
-                        angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
+                        r: it.type==="puppet" ? 16+Math.random()*3 : (it.type==="hajime" ? 14+Math.random()*4 : 13+Math.random()*5),
+                        angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:it.type==="hajime"?3:2,
                         hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
                         face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0, visibleT:0, stealthT:0 });
       } else if (it.type==="chest" && it.chest){
@@ -1251,9 +1256,9 @@
   function spitItem(ent, it){   // 15 秒消化到期：吐在原地
     const x=ent.x+(Math.random()-0.5)*24, y=ent.y+(Math.random()-0.5)*24;
     if (it.type==="coin") coins.push({ x, y, r:8, taken:false, ph:Math.random()*6 });
-    else if (it.type==="ghost" || it.type==="puppet" || it.type==="cat")
-      monsters.push({ type:it.type, x, y, r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
-                      angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
+    else if (it.type==="ghost" || it.type==="puppet" || it.type==="cat" || it.type==="hajime")
+      monsters.push({ type:it.type, x, y, r: it.type==="puppet" ? 16+Math.random()*3 : (it.type==="hajime" ? 14+Math.random()*4 : 13+Math.random()*5),
+                      angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:it.type==="hajime"?3:2,
                       hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
                       face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0, visibleT:0, stealthT:0 });
     else if (it.type==="chest" && it.chest){
@@ -1439,6 +1444,7 @@
     if (game.state===STATE.PLAYING){   // 只有活着才能操控
       const SPEED=158;
       let sp=SPEED*(ch.speedMul||1);
+      if (player.slowT>0){ player.slowT-=dt; sp*=0.5; }        // 哈基米音波减速
       if (game.cartPush) sp*=1.35;                       // 推购物车走得快
       if (game.char==="huang" && game.skillT>0){
         sp+=12;                              // 滚动：速度 +12（仅 1 秒）
@@ -1619,6 +1625,39 @@
         if (m.flash>0) m.flash-=dt;
         if (m.spawnFx>0) m.spawnFx-=dt;
         if (m.stepFx>0) m.stepFx-=dt;
+      } else if (m.type==="hajime"){
+        // 哈基米：追近 → 停下"哈基米～"嚎叫 1.8s（预警圈）→ 音波环扩散（15 伤+1.5s 减速，跳跃/高台可躲）→ 僵直 2.5s
+        if (m.state==="howl"){
+          if (nd>210){ m.state="chase"; }                  // 目标跑太远：收起嚎叫
+          else {
+            m.timer-=dt;
+            if (m.timer<=0){
+              waves.push({ x:m.x, y:m.y, r:m.r+8, maxR:215, speed:300, dmg:15, slow:1.5, hit:new Set() });
+              m.state="rest"; m.timer=2.5;
+            }
+          }
+        } else if (m.state==="rest"){
+          m.timer-=dt;
+          if (m.timer<=0) m.state="chase";
+        } else {
+          if (nd<110){ m.state="howl"; m.timer=1.8; }
+          else if (nd<cfg.detect && nd>0.1){
+            const spd=cfg.chase*1.1;
+            const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
+            const okX=!hitsWall(nx, m.y, m.r, true), okY=!hitsWall(m.x, ny, m.r, true);
+            if (okX) m.x=nx; if (okY) m.y=ny;
+            m.face = ne.x>=m.x ? 1 : -1;
+          } else {
+            m.wt-=dt;
+            if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=0.8+Math.random()*1.4; }
+            const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
+            if (!hitsWall(nx, m.y, m.r, true)) m.x=nx;
+            if (!hitsWall(m.x, ny, m.r, true)) m.y=ny;
+          }
+        }
+        m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
+        if (m.flash>0) m.flash-=dt;
+        if (m.spawnFx>0) m.spawnFx-=dt;
       } else if (m.stun>0){
         m.stun-=dt;
       } else if (m.state==="charge"){
@@ -1747,7 +1786,7 @@
         if (Math.hypot(m.x-th.x,m.y-th.y)<m.r+6){
           m.hp--; m.flash=0.3;
           addFloat(m.x,m.y-18,"命中 -1","#ffd76a");
-          if (m.hp<=0){ monsters=monsters.filter(x=>x!==m); game.coins+=10; updateHud(); addFloat(m.x,m.y-18,"击杀 +10","#5be0ff"); }
+          if (m.hp<=0){ monsters=monsters.filter(x=>x!==m); const rw=m.type==="hajime"?15:10; game.coins+=rw; updateHud(); addFloat(m.x,m.y-18,"击杀 +"+rw,"#5be0ff"); }
           done=true; break;
         }
       }
@@ -1770,6 +1809,22 @@
         cands.sort((a,b)=>Math.hypot(a.x-f.x,a.y-f.y)-Math.hypot(b.x-f.x,b.y-f.y));
         for (const c of cands){
           if (Math.hypot(c.x-f.x,c.y-f.y)<28 && hurt(c,20)){ f.active=false; break; }
+        }
+      }
+    }
+
+    // 哈基米音波环：向外扩散，命中玩家/队友 15 伤 + 减速（跳跃/高台免疫），每人只吃一次
+    for (let i=waves.length-1;i>=0;i--){
+      const w=waves[i];
+      w.r+=w.speed*dt;
+      if (w.r>w.maxR){ waves.splice(i,1); continue; }
+      const cands=[];
+      if (!w.hit.has(player) && game.state===STATE.PLAYING && player.jumpT<=0 && !onPlatform(player.x,player.y)) cands.push(player);
+      for (const b of bots){ if (!b.dead && !w.hit.has(b) && !onPlatform(b.x,b.y)) cands.push(b); }
+      for (const c of cands){
+        if (Math.hypot(c.x-w.x,c.y-w.y)<w.r+12){
+          w.hit.add(c);
+          if (hurt(c,w.dmg)){ c.slowT=(c.slowT||0)+w.slow; addFloat(c.x,c.y-26,"音波 -"+w.dmg,"#ffb26a"); }
         }
       }
     }
@@ -1870,6 +1925,7 @@
       if (b.watching) b.face = b.watching.x>=b.x ? 1 : -1;
       const dx=tx-b.x, dy=ty-b.y, d=Math.hypot(dx,dy);
       let sp=(fg&&fd<110)?125:95;
+      if (b.slowT>0){ b.slowT-=dt; sp*=0.5; }                   // 哈基米音波减速
       if (b.boost>0) sp*=1.5;
       if (b.roll>0){ sp+=12; b.rAng+=sp*dt*0.02; } else b.rAng*=0.85;
       if (!b.riding && !chanStand && !b.watching && d>4){
@@ -1922,7 +1978,7 @@
           addFloat(target.x,target.y-18,"鱼叉 -1","#ffd76a");
           if (target.hp<=0){
             monsters=monsters.filter(x=>x!==target);
-            game.coins+=5; updateHud();
+            game.coins+=target.type==="hajime"?8:5; updateHud();
             addFloat(target.x,target.y-18,"队友击杀 +5","#5be0ff");
           }
         }
@@ -2062,8 +2118,9 @@
         addFloat(m.x,m.y-18,"小幽灵 -1","#ffd76a");
         if (m.hp<=0){
           monsters.splice(i,1);
-          game.coins+=10; updateHud();
-          addFloat(m.x,m.y-18,"击杀 +10","#5be0ff");
+          const rw=m.type==="hajime"?15:10;
+          game.coins+=rw; updateHud();
+          addFloat(m.x,m.y-18,"击杀 +"+rw,"#5be0ff");
         }
       }
     }
@@ -2184,6 +2241,7 @@
   function drawGhost(m){
     if (m.type==="puppet"){ drawPuppet(m); return; }
     if (m.type==="cat"){ drawCat(m); return; }
+    if (m.type==="hajime"){ drawHajime(m); return; }
     const g=m.hue;
     ctx.save(); ctx.translate(m.x, m.y);
     if (m.flash>0){                                     // 被撞飞的冲击环
@@ -2312,6 +2370,87 @@
     ctx.fillStyle = vis ? "#2a1836" : "rgba(42,24,54,.6)";
     ctx.beginPath(); ctx.arc(0,4,2,0,Math.PI*2); ctx.fill();
     ctx.globalAlpha=1;
+    ctx.restore();
+  }
+
+  function drawHajime(m){   // 哈基米：橘色音波猫（追近 →"哈基米～"嚎叫 → 音波环 → 僵直）
+    ctx.save(); ctx.translate(m.x, m.y);
+    const t=performance.now()/1000;
+    const howl = m.state==="howl", rest = m.state==="rest";
+    if (m.flash>0){                                     // 被击闪光
+      const p=1-m.flash/0.35;
+      ctx.strokeStyle=`rgba(255,224,102,${(1-p)*0.9})`;
+      ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(0,0,m.r+p*46,0,Math.PI*2); ctx.stroke();
+    }
+    if (howl){                                          // 嚎叫：预警圈收缩 + 头顶"哈基米！"音符
+      const pr=1-m.timer/1.8;
+      ctx.strokeStyle=`rgba(255,90,60,${0.35+0.5*pr})`;
+      ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(0,0,m.r+20-16*pr,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle=`rgba(255,150,90,${0.25+0.4*pr})`;
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(0,0,m.r+30-24*pr,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle="#ffb26a"; ctx.font="bold 13px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("哈基米！", 0, -m.r-26);
+      ctx.font="bold 11px sans-serif";
+      ctx.fillText("♪", -m.r-16, -m.r-6+Math.sin(t*8)*2);
+      ctx.fillText("♪",  m.r+16, -m.r-10+Math.sin(t*8+1)*2);
+    }
+    if (m.spawnFx>0){                                   // 刷怪出生扩散圈
+      const p=1-m.spawnFx/0.7;
+      ctx.strokeStyle=`rgba(255,150,200,${(1-p)*0.85})`;
+      ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(0,0,m.r+p*34,0,Math.PI*2); ctx.stroke();
+    }
+    const glow=ctx.createRadialGradient(0,0,2,0,0,m.r+16);
+    glow.addColorStop(0,"hsla(28,90%,62%,.45)"); glow.addColorStop(1,"hsla(28,90%,62%,0)");
+    ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,0,m.r+16,0,Math.PI*2); ctx.fill();
+    // 尾巴（摆动）
+    ctx.strokeStyle="#d97a2a"; ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(m.r*0.5, 4);
+    ctx.quadraticCurveTo(m.r*1.05, 2+Math.sin(t*5)*5, m.r*0.9, 9+Math.sin(t*5+1)*7);
+    ctx.stroke();
+    // 耳朵（howl 时竖得更直）
+    const earH = howl ? 1.25 : 1.0;
+    ctx.fillStyle="#e88a3a";
+    ctx.beginPath(); ctx.moveTo(-m.r*0.78,-m.r*0.38); ctx.lineTo(-m.r*0.32,-m.r*earH); ctx.lineTo(-m.r*0.05,-m.r*0.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo( m.r*0.78,-m.r*0.38); ctx.lineTo( m.r*0.32,-m.r*earH); ctx.lineTo( m.r*0.05,-m.r*0.5); ctx.closePath(); ctx.fill();
+    // 头 + 身（橘色圆猫）
+    ctx.fillStyle="#f09a4a";
+    ctx.beginPath(); ctx.arc(0,0,m.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#ffb87a";
+    ctx.beginPath(); ctx.arc(-2,-3,m.r*0.8,0,Math.PI*2); ctx.fill();
+    // 条纹（背部三道）
+    ctx.strokeStyle="#d97a2a"; ctx.lineWidth=1.6;
+    ctx.beginPath();
+    ctx.moveTo(-4,-m.r*0.75); ctx.lineTo(4,-m.r*0.75);
+    ctx.moveTo(-5,-m.r*0.55); ctx.lineTo(5,-m.r*0.55);
+    ctx.stroke();
+    // 眼睛：howl 时怒视变红 + 皱眉；rest 时眯眼
+    if (howl){
+      ctx.fillStyle="#ff4a4a";
+      ctx.beginPath(); ctx.arc(-5,-4,3.2,0,Math.PI*2); ctx.arc(5,-4,3.2,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle="#c25a2a"; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.moveTo(-9,-9); ctx.lineTo(-2,-7); ctx.moveTo(9,-9); ctx.lineTo(2,-7); ctx.stroke();   // 皱眉
+    } else if (rest){
+      ctx.strokeStyle="#8a4a1a"; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.moveTo(-8,-3); ctx.lineTo(-2,-4); ctx.moveTo(8,-3); ctx.lineTo(2,-4); ctx.stroke();   // 眯眼
+    } else {
+      ctx.fillStyle="#ffd24a";
+      ctx.beginPath(); ctx.arc(-5,-4,2.8,0,Math.PI*2); ctx.arc(5,-4,2.8,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#3a1a08";
+      ctx.beginPath(); ctx.arc(-5,-4,1.4,0,Math.PI*2); ctx.arc(5,-4,1.4,0,Math.PI*2); ctx.fill();
+    }
+    // 嘴：howl 张开大嘴 / 平时小嘴
+    if (howl){
+      ctx.fillStyle="#7a2a0a";
+      ctx.beginPath(); ctx.arc(0,8,4.5,0,Math.PI); ctx.fill();          // 张开的嘴（上半圆）
+      ctx.fillStyle="#ff6a6a"; ctx.fillRect(-2,6,4,2);                  // 舌头
+    } else {
+      ctx.fillStyle="#7a2a0a"; ctx.beginPath(); ctx.arc(0,5,1.8,0,Math.PI*2); ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -2773,6 +2912,15 @@
       ctx.beginPath(); ctx.arc(f.x,f.y,R,0,Math.PI*2); ctx.fill();
       ctx.fillStyle=`rgba(255,240,150,${Math.max(0,f.life)*0.8})`;
       ctx.beginPath(); ctx.arc(f.x,f.y,R*0.5,0,Math.PI*2); ctx.fill();
+    }
+    for (const w of waves){   // 哈基米音波环：双层扩散环，越远越淡
+      const p=w.r/w.maxR;
+      ctx.strokeStyle=`rgba(255,150,90,${(1-p)*0.9})`;
+      ctx.lineWidth=3+3*(1-p);
+      ctx.beginPath(); ctx.arc(w.x,w.y,w.r,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle=`rgba(255,210,140,${(1-p)*0.5})`;
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(w.x,w.y,w.r*0.72,0,Math.PI*2); ctx.stroke();
     }
 
     // 开场阶段提示（黑暗之上可见）
