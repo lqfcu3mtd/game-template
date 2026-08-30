@@ -92,7 +92,8 @@
       <span>角色 <b id="charName">蛋小黄</b></span>
       <span>队友 <b id="mates">3/3</b></span>
       <span class="hp">血量 <b id="hp">100</b></span>
-      <span>宝石 <b id="gems">0</b></span>
+      <span>惊魂币 <b id="coins">0</b></span>
+      <span>宝物 <b id="haulCount">0</b></span>
       <span>技能 <b id="skill">疾跑 ·就绪</b></span>
       <span>时间 <b id="time">0</b>s</span>
       <span id="evac" style="color:#7cfc9b">撤离 ¥0 / ¥0</span>
@@ -102,7 +103,7 @@
       <div class="overlay" id="overlay">
         <div class="panel">
           <h2 id="ov-title">蛋仔惊魂寻宝队</h2>
-          <p id="ov-text">选择难度与地图，开始惊魂寻宝！<br>躲避幽灵、捡宝石，找到发光宝箱就赢。</p>
+          <p id="ov-text">选难度选地图，捡惊魂币、开宝箱攒撤离金额，<br>金额达标后按 X 撤离！小心高台上躲避怪物。</p>
           <div id="picks">
             <div class="pick">
               <div class="pick-label">难度</div>
@@ -165,7 +166,7 @@
             <button class="start" id="ov-btn">开始冒险</button>
             <button class="start" id="shopBtn">商城</button>
           </div>
-          <p class="hint">WASD 移动 · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头 · X 撤离（金额达标） · E 开门/刷卡/上下购物车 · 点击快捷栏装备 · 空格暂停 · R 换图</p>
+          <p class="hint">WASD 移动 · 空格跳跃（躲火焰） · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头 · X 撤离（金额达标） · E 开门/刷卡 · P 暂停 · R 换图</p>
         </div>
       </div>
     </div>
@@ -174,9 +175,11 @@
       <div class="inv-bar">
         <div class="inv-hot" id="invHot"></div>
         <button class="inv-btn" id="bagBtn">背包</button>
+        <button class="inv-btn" id="haulBtn">宝物(0)</button>
       </div>
       <div class="inv-bag" id="invBag" style="display:none"></div>
       <div class="inv-bag" id="invPetWrap" style="display:none"><span class="inv-label">宠物背包</span><div id="invPet"></div></div>
+      <div class="inv-bag" id="haulPanel" style="display:none"></div>
     </div>
     <!-- 阵亡观战 UI -->
     <div class="spectate" id="spectate" style="display:none">
@@ -194,32 +197,32 @@
   <div class="shop-mask" id="shopMask" style="display:none">
     <div class="shop">
       <h3>蛋蛋商城</h3>
-      <div class="shop-wallet">总宝石 <b id="wallet">0</b></div>
+      <div class="shop-wallet">总惊魂币 <b id="wallet">0</b></div>
       <div class="shop-item">
         <b>鱼叉</b><br>
         <span style="font-size:12px;color:#a99fc4">放入背包/快捷栏 · 无限挥砍 · 近战两叉击杀 · 被打死会掉落</span>
-        <div class="item-price">10 宝石 / 把</div>
+        <div class="item-price">10 惊魂币 / 把</div>
         <div class="item-owned">拥有 <b id="harpoonOwned">0</b> 把</div>
         <button class="start" id="buyHarpoon" style="padding:8px 22px;font-size:14px">购买</button>
       </div>
       <div class="shop-item">
         <b>返魂药水</b><br>
         <span style="font-size:12px;color:#a99fc4">复活一位阵亡队友：靠近其尸体引导 5 秒，复活后只剩 50 血</span>
-        <div class="item-price">5 宝石 / 瓶</div>
+        <div class="item-price">5 惊魂币 / 瓶</div>
         <div class="item-owned">拥有 <b id="reviveOwned">0</b> 瓶</div>
         <button class="start" id="buyRevive" style="padding:8px 22px;font-size:14px">购买</button>
       </div>
       <div class="shop-item">
         <b>低级会员</b><br>
         <span style="font-size:12px;color:#a99fc4">快捷栏 +1 格（共 7 格）</span>
-        <div class="item-price">20 宝石</div>
+        <div class="item-price">20 惊魂币</div>
         <div class="item-owned" id="memberBasicOwned"></div>
         <button class="start" id="buyBasic" style="padding:8px 22px;font-size:14px">购买</button>
       </div>
       <div class="shop-item">
         <b>高级会员</b><br>
         <span style="font-size:12px;color:#a99fc4">快捷栏 +1、宠物背包 1 格、小狗跟随（共 8 格）</span>
-        <div class="item-price">30 宝石</div>
+        <div class="item-price">30 惊魂币</div>
         <div class="item-owned" id="memberPremiumOwned"></div>
         <button class="start" id="buyPremium" style="padding:8px 22px;font-size:14px">购买</button>
       </div>
@@ -287,7 +290,7 @@
   }
 
   const STATE = { MENU: 0, PLAYING: 1, PAUSED: 2, OVER: 3, WIN: 4, DEAD: 5 };
-  const CELL = { EMPTY: 0, WALL: 1, TREASURE: 2 };
+  const CELL = { EMPTY: 0, WALL: 1, PLATFORM: 2 };   // PLATFORM：方块高台，玩家/队友可站，怪物视为墙
 
   // ===== 难度配置 =====
   const DIFF = {
@@ -325,6 +328,32 @@
     ],
   };
 
+  // ===== 宝箱品质 =====
+  const CHEST_QUAL = {
+    rare:     { label:"稀有宝箱", color:"#7cc7ff" },
+    classic:  { label:"典藏宝箱", color:"#ffd24a" },
+    ultimate: { label:"至臻宝箱", color:"#ff9e3a" },
+  };
+  function chestLoot(qual){   // 按品质开箱掉落
+    const L=(n)=>TREASURES.legend.find(t=>t.name===n), B=(n)=>TREASURES.basic.find(t=>t.name===n);
+    if (qual==="ultimate"){                                   // 至臻宝箱：只出至臻，保底黄金书
+      const r=Math.random();
+      if (r<0.5) return L("黄金书");
+      if (r<0.8) return L("黄金艾比");
+      return L("黄金圣杯");
+    }
+    const pUlt = qual==="rare" ? 0.05 : 0.08;                 // 稀有/典藏：可开所有，至臻概率很低
+    if (Math.random()<pUlt) return TREASURES.legend[(Math.random()*TREASURES.legend.length)|0];
+    const r=Math.random();                                    // 保底都是彩窗圆盘
+    if (qual==="rare"){ if (r<0.55) return B("彩窗圆盘"); if (r<0.80) return B("镀金怀表"); return B("水晶沙漏"); }
+    if (r<0.40) return B("彩窗圆盘"); if (r<0.70) return B("镀金怀表"); return B("水晶沙漏");
+  }
+  function chestCountFor(){   // 宝箱数量：古堡简单1，超市/疯人院简单2；普通+1，困难+2
+    const base = game.map==="castle" ? 1 : 2;
+    const add = game.difficulty==="easy" ? 0 : (game.difficulty==="normal" ? 1 : 2);
+    return base + add;
+  }
+
   // ===== 角色配置（含专属技能）=====
   const CHARS = {
     huang:  { name:"蛋小黄", body:"#ffe975", shell:"#ffb02e", speedMul:1.12,
@@ -332,17 +361,17 @@
     puff:   { name:"泡芙",   body:"#fff5f8", shell:"#ff8fc2",
               skill:{ name:"星星", cd:40, dur:1.6, desc:"朝前方发射一颗星星，照亮前路（穿墙飞行后消失）" } },
     duoduo: { name:"毛哆哆", body:"#f6c98f", shell:"#c9762f",
-              skill:{ name:"吃", cd:40, dur:1.5, desc:"张嘴 1.5 秒：靠近吃宝石/小幽灵(+15)/宝箱" } },
+              skill:{ name:"吃", cd:40, dur:1.5, desc:"张嘴 1.5 秒：靠近吃惊魂币/小幽灵(+15)/宝箱" } },
     lv:     { name:"蛋小绿", body:"#c8f5b0", shell:"#57c84d", lightMul:1.25,
               skill:{ name:"治疗", cd:40, dur:10, desc:"自疗10秒每秒+6；附近有队友则飘到其身边定住10秒，每秒给双方+6" } },
   };
 
   const game = {
-    state: STATE.MENU, hp: 100, gems: 0, time: 0, winner: "",
+    state: STATE.MENU, hp: 100, coins: 0, time: 0, winner: "",
     eatT: 0, belly: [], healFx: 0, swingFx: 0, healChan: null, reviveChan: null,
     spectate: 0, potReviveT: 0, huntStarted: false, enterT: 0, roundCounted: false,
     carOpen: false, cartPush: false, cartMode: false, gateChan: null, ridingCart: null, inSewer: false, spawnT: 0,   // 车门 / 购物车 / 进门鉴 / 下水道 / 刷怪计时
-    treasureValue: 0, aibiCaught: 0, aibiCd: 0, chestOpened: false, hasAibi: false,   // 撤离金额 / 黄金艾比捕获
+    haul: [], aibiCaught: 0, aibiCd: 0, hasAibi: false,   // 本局宝物清单（可卖出换惊魂币）/ 黄金艾比捕获
     teammates: ["puff","duoduo","lv"], matesCustomized: false, mateCount: 3,
     difficulty: "easy", map: "castle", char: "huang",
     cfg: DIFF.normal, theme: MAPS.castle, skin: CHARS.huang,
@@ -351,16 +380,17 @@
 
   // ===== 实体 =====
   let grid = [];
-  let player = { x: 0, y: 0, r: 14, face: 1, invuln: 0, startX: 0, startY: 0 };
-  let treasure = { x: 0, y: 0 };
-  let monsters = [], gems = [], bots = [], floaters = [], floatTexts = [], lights = [], fires = [], drops = [], throwns = [];
+  let player = { x: 0, y: 0, r: 14, face: 1, invuln: 0, jumpT: 0, startX: 0, startY: 0 };
+  let chests = [];                              // 宝箱数组：{x,y,qual,opened,carried}
+  let monsters = [], coins = [], bots = [], floaters = [], floatTexts = [], lights = [], fires = [], drops = [], throwns = [];
   let puppy = null;   // 高级会员的小狗
   let mouse = { x: 0, y: 0, seen: false };   // 鼠标位置（用于瞄准扔东西）
-  let chestState = "intact", chestCarrier = null;   // 宝箱：intact 可开 / carried 被吞在肚子里
 
   // ===== 钱包 & 商城（鱼叉是武器：持有即无限挥砍，死亡才掉落）=====
-  let inv = { gems: 0, member: "none", stats: { easy:0, normal:0 } };
+  let inv = { coins: 0, member: "none", stats: { easy:0, normal:0 } };
   try { const s = localStorage.getItem("eggy_inv"); if (s) inv = JSON.parse(s); } catch(e){}
+  if (inv.coins===undefined) inv.coins = inv.gems||0;   // 旧存档兼容：宝石→惊魂币
+  delete inv.gems;
   if (!inv.member) inv.member = "none";
   if (!inv.stats) inv.stats = { easy:0, normal:0 };
   function saveInv(){ try { localStorage.setItem("eggy_inv", JSON.stringify(inv)); } catch(e){} }
@@ -370,35 +400,35 @@
   shopMask.addEventListener("click", (e) => { if (e.target===shopMask) shopMask.style.display="none"; });
   document.getElementById("buyHarpoon").addEventListener("click", () => {
     if (hasItem("harpoon")){ document.getElementById("shopMsg").textContent="你已经有一把鱼叉了"; return; }
-    if (inv.gems<10){ document.getElementById("shopMsg").textContent="宝石不足，还差 "+(10-inv.gems); return; }
-    inv.gems-=10; saveInv();
+    if (inv.coins<10){ document.getElementById("shopMsg").textContent="惊魂币不足，还差 "+(10-inv.coins); return; }
+    inv.coins-=10; saveInv();
     const where=addItem("harpoon");
-    document.getElementById("wallet").textContent=inv.gems;
+    document.getElementById("wallet").textContent=inv.coins;
     document.getElementById("harpoonOwned").textContent="1";
     document.getElementById("shopMsg").textContent = where ? "购买成功！已放入"+(where==="hot"?"快捷栏":"背包")+"，按 H 挥叉" : "背包满了！";
     updateHud();
   });
   document.getElementById("buyBasic").addEventListener("click", () => {
     if (inv.member!=="none"){ document.getElementById("shopMsg").textContent="你已经是会员了"; return; }
-    if (inv.gems<20){ document.getElementById("shopMsg").textContent="宝石不足，还差 "+(20-inv.gems); return; }
-    inv.gems-=20; inv.member="basic"; saveInv();
+    if (inv.coins<20){ document.getElementById("shopMsg").textContent="惊魂币不足，还差 "+(20-inv.coins); return; }
+    inv.coins-=20; inv.member="basic"; saveInv();
     updateMemberUI(); renderInv();
-    document.getElementById("wallet").textContent=inv.gems;
+    document.getElementById("wallet").textContent=inv.coins;
     document.getElementById("shopMsg").textContent="开通低级会员！快捷栏 +1，共 7 格";
   });
   document.getElementById("buyPremium").addEventListener("click", () => {
     if (inv.member==="premium"){ document.getElementById("shopMsg").textContent="你已经是高级会员了"; return; }
-    if (inv.gems<30){ document.getElementById("shopMsg").textContent="宝石不足，还差 "+(30-inv.gems); return; }
-    inv.gems-=30; inv.member="premium"; saveInv();
+    if (inv.coins<30){ document.getElementById("shopMsg").textContent="惊魂币不足，还差 "+(30-inv.coins); return; }
+    inv.coins-=30; inv.member="premium"; saveInv();
     updateMemberUI(); renderInv(); ensurePuppy();
-    document.getElementById("wallet").textContent=inv.gems;
+    document.getElementById("wallet").textContent=inv.coins;
     document.getElementById("shopMsg").textContent="开通高级会员！小狗来啦，宠物背包 +1，共 8 格";
   });
   document.getElementById("buyRevive").addEventListener("click", () => {
-    if (inv.gems<5){ document.getElementById("shopMsg").textContent="宝石不足，还差 "+(5-inv.gems); return; }
-    inv.gems-=5; saveInv();
+    if (inv.coins<5){ document.getElementById("shopMsg").textContent="惊魂币不足，还差 "+(5-inv.coins); return; }
+    inv.coins-=5; saveInv();
     const where=addItem("revive");
-    document.getElementById("wallet").textContent=inv.gems;
+    document.getElementById("wallet").textContent=inv.coins;
     updateReviveOwned();
     document.getElementById("shopMsg").textContent = where ? "购买成功！已放入"+(where==="hot"?"快捷栏":"背包")+"，靠近尸体按 U 使用" : "背包满了！";
   });
@@ -412,14 +442,14 @@
     document.getElementById("buyPremium").textContent = inv.member==="premium" ? "已拥有" : (inv.member==="basic" ? "升级" : "购买");
   }
   function openShop(){
-    document.getElementById("wallet").textContent=inv.gems;
+    document.getElementById("wallet").textContent=inv.coins;
     document.getElementById("harpoonOwned").textContent=hasItem("harpoon")?"1":"0";
     updateReviveOwned();
     document.getElementById("shopMsg").textContent="";
     updateMemberUI();
     shopMask.style.display="flex";
   }
-  function bankGems(){ inv.gems+=game.gems; game.gems=0; updateHud(); saveInv(); }
+  function bankCoins(){ inv.coins+=game.coins; game.coins=0; updateHud(); saveInv(); }
 
   // ===== 背包：快捷栏（常显）+ 背包格（点击展开）+ 宠物背包（会员）=====
   const harpoonSVG = '<svg viewBox="0 0 24 24" width="24" height="24"><line x1="4" y1="20" x2="18" y2="6" stroke="#ffd76a" stroke-width="3.5" stroke-linecap="round"/><path d="M18 6 l-6 1.2 M18 6 l-1.2 6" stroke="#fff2c9" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>';
@@ -517,6 +547,50 @@
   document.getElementById("bagBtn").addEventListener("click", ()=>{ bagOpen=!bagOpen; renderInv(); });
   renderInv();
 
+  // ===== 宝物清单：摸到的宝物可随时卖出换惊魂币 =====
+  let haulOpen=false;
+  function renderHaul(){
+    const el=document.getElementById("haulPanel");
+    if (!el) return;
+    el.innerHTML="";
+    if (!game.haul.length){
+      const empty=document.createElement("span");
+      empty.className="slot-tag"; empty.textContent="还没有宝物，去开宝箱吧";
+      el.appendChild(empty);
+    }
+    game.haul.forEach((t,i)=>{
+      const row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;gap:8px;margin:4px 0;width:100%";
+      const nm=document.createElement("span");
+      nm.style.cssText="color:"+t.color+";font-weight:700";
+      nm.textContent=t.name;
+      const val=document.createElement("span");
+      val.style.cssText="color:#a99fc4;font-size:12px";
+      val.textContent="¥"+t.value.toLocaleString();
+      const btn=document.createElement("button");
+      btn.className="inv-btn";
+      btn.style.cssText="padding:3px 10px;font-size:12px;margin-left:auto";
+      btn.textContent="卖出 +"+t.sell;
+      btn.addEventListener("click", ()=>{
+        if (game.state!==STATE.PLAYING && game.state!==STATE.DEAD) return;
+        inv.coins+=t.sell; game.haul.splice(i,1);
+        game.hasAibi = game.haul.some(x=>x.name==="黄金艾比");
+        saveInv(); updateHud(); updateEvacHud(); renderHaul();
+        addFloat(player.x, player.y-26, "卖出 "+t.name+" +"+t.sell+" 惊魂币", "#ffd76a");
+      });
+      row.appendChild(nm); row.appendChild(val); row.appendChild(btn);
+      el.appendChild(row);
+    });
+    const tip=document.createElement("div");
+    tip.style.cssText="font-size:11px;color:#8a7fa8;margin-top:6px;text-align:center";
+    tip.textContent="宝物可随时卖出换惊魂币；未卖出的本局结束消失";
+    el.appendChild(tip);
+    el.style.display = haulOpen ? "flex" : "none";
+    document.getElementById("haulBtn").textContent = haulOpen ? "收起宝物" : "宝物("+game.haul.length+")";
+  }
+  document.getElementById("haulBtn").addEventListener("click", ()=>{ haulOpen=!haulOpen; renderHaul(); });
+  renderHaul();
+
   // ===== 小狗（高级会员宠物）=====
   function ensurePuppy(){
     if (inv.member==="premium" && !puppy){
@@ -533,7 +607,8 @@
     const k = e.key.toLowerCase();
     if (["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"," "].includes(k)) e.preventDefault();
     keys[k] = true;
-    if (k === " ") togglePause();
+    if (k === " " && game.state===STATE.PLAYING) doJump();   // 空格跳跃（躲小幽灵火焰）
+    if (k === "p") togglePause();                            // P 暂停/继续
     if (k === "j") useSkill();
     if (k === "k") eatAction();
     if (k === "h") throwHarpoon();
@@ -564,6 +639,9 @@
   document.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
 
   // 点选队友切换跟随/自由（城堡：18 秒后点车门/E 键开门）
+  function doJump(){
+    if (player.jumpT<=0) player.jumpT=0.55;   // 腾空 0.55s：跳跃期间免疫地面火焰
+  }
   function openCarDoor(){
     if (game.state!==STATE.PLAYING || game.carOpen) return;
     game.carOpen=true;
@@ -661,7 +739,8 @@
   function updateHud() {
     document.getElementById("charName").textContent = CHARS[game.char].name;
     document.getElementById("hp").textContent = game.hp;
-    document.getElementById("gems").textContent = game.gems;
+    document.getElementById("coins").textContent = game.coins;
+    document.getElementById("haulCount").textContent = game.haul.length;
     document.getElementById("time").textContent = Math.floor(game.time);
     updateEvacHud();
   }
@@ -792,7 +871,7 @@
         if (d>bestD){bestD=d;best={r,c};}
       }
       const tr=best.r, tc=best.c;
-      grid[tr][tc]=CELL.TREASURE; clearAround(tr,tc);
+      clearAround(tr,tc);
 
       // 地牢底部封墙，只留大门缺口（城堡另开右侧侧门；疯人院整行是前厅走廊）
       for (let c=0;c<COLS;c++) grid[GATE_ROW][c]=CELL.WALL;
@@ -814,7 +893,19 @@
       if (game.theme.frontHall)                    // 疯人院：前厅上方一横行贯通，左门/正门互通
         for (let cc=0; cc<=7; cc++) grid[GATE_ROW-2][cc]=CELL.EMPTY;
 
-      // ===== 关键修复：从入口校验宝箱可达（封墙后的最终网格），不可达就重roll =====
+      // ===== 方块高台：把部分随机墙转为高台（玩家可站上去躲怪，怪物视为墙）=====
+      const platCount = 10;
+      let wallCells=[];
+      for (let r=2;r<ROWS-2;r++) for (let c=2;c<COLS-2;c++){
+        if (grid[r][c]!==CELL.WALL) continue;
+        if (r===GATE_ROW || r===GATE_ROW-1) continue;
+        if (game.theme.frontHall && r===GATE_ROW-2) continue;
+        wallCells.push({r,c});
+      }
+      shuffle(wallCells);
+      for (let i=0;i<platCount && i<wallCells.length;i++) grid[wallCells[i].r][wallCells[i].c]=CELL.PLATFORM;
+
+      // ===== 关键修复：从入口校验地图连通（封墙后的最终网格），不通就重roll =====
       const entryR = game.theme.frontHall ? GATE_ROW-2 : GATE_ROW-1;
       const reach = reachableMap(entryR, GATE_COL);
       if (!reach[tr][tc]) continue;
@@ -830,19 +921,30 @@
       }
       gates={ main:{openT:0}, side:{openT:0}, sewer:{openT:0} };
       game.cartPush=false; game.cart=null; game.gateChan=null; game.ridingCart=null; game.cartMode=false; game.inSewer=false;
-      const tc2=tileCenter(tr,tc); treasure.x=tc2.x; treasure.y=tc2.y;
 
       let empties=[];
       for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
-        if (grid[r][c]===CELL.EMPTY && !(r===sr&&c===sc) && reach[r][c]) empties.push({r,c});   // 只放可达格，避免宝石刷在围墙里
+        if (grid[r][c]===CELL.EMPTY && !(r===sr&&c===sc) && reach[r][c]) empties.push({r,c});   // 只放可达格，避免惊魂币刷在围墙里
       shuffle(empties);
+
+      // 宝箱：按地图×难度数量，均匀散布在可达空地上，品质随机（稀有55% / 典藏30% / 至臻15%）
+      chests=[];
+      const nChest = chestCountFor();
+      const step = Math.max(1, Math.floor(empties.length/(nChest+1)));
+      let ei=0;
+      for (let i=0;i<nChest && ei<empties.length;i++){
+        const e=empties[Math.min(ei, empties.length-1)]; ei+=step;
+        const p=tileCenter(e.r,e.c);
+        const qr=Math.random();
+        chests.push({ x:p.x, y:p.y, qual: qr<0.55?"rare":(qr<0.85?"classic":"ultimate"), opened:false, carried:null });
+      }
 
       monsters=[];   // 进入大门后才刷小幽灵
 
-      gems=[]; const gCount=Math.min(14,(empties.length/2)|0);
-      for (let k=0;k<gCount && k<empties.length;k++){
-        const e=empties[k]; const p=tileCenter(e.r,e.c);
-        gems.push({ x:p.x, y:p.y, r:8, taken:false, ph:Math.random()*6 });
+      coins=[]; const gCount=Math.min(14,(empties.length/2)|0);
+      for (let k=0;k<gCount && ei<empties.length;k++){
+        const e=empties[ei++]; const p=tileCenter(e.r,e.c);
+        coins.push({ x:p.x, y:p.y, r:8, taken:false, ph:Math.random()*6 });
       }
 
       floaters=[];
@@ -868,7 +970,11 @@
   }
 
   // ===== 碰撞 =====
-  function hitsWall(x, y, r) {
+  function onPlatform(x, y){   // 是否站在方块高台上（高台上免疫地面火焰与怪物贴脸攻击）
+    const r=Math.floor(y/TILE), c=Math.floor(x/TILE);
+    return r>=0 && r<ROWS && c>=0 && c<COLS && grid[r][c]===CELL.PLATFORM;
+  }
+  function hitsWall(x, y, r, platformWall) {   // platformWall=true：怪物视角，高台视为墙
     const minC=Math.floor((x-r)/TILE), maxC=Math.floor((x+r)/TILE);
     const minR=Math.floor((y-r)/TILE), maxR=Math.floor((y+r)/TILE);
     for (let rr=minR; rr<=maxR; rr++) for (let cc=minC; cc<=maxC; cc++) {
@@ -891,6 +997,7 @@
         continue;
       }
       if (grid[rr][cc]===CELL.WALL) return true;
+      if (grid[rr][cc]===CELL.PLATFORM && platformWall) return true;   // 高台：怪物过不去
       if (rr===GATE_ROW){
         if (cc===GATE_COL && gates.main.openT<=0) return true;                 // 主门：需进门鉴
         if (game.theme.sideDoor && cc===COLS-1 && gates.side.openT<=0) return true;  // 侧门：需进门鉴
@@ -949,13 +1056,13 @@
     if (!isUnlocked(game.difficulty)){ game.difficulty="easy"; renderDiffButtons(); }   // 保险：难度被锁回简单
     game.cfg=DIFF[game.difficulty]; game.theme=MAPS[game.map]; game.skin=CHARS[game.char];
     game.hp=100;
-    game.gems=0; game.time=0; game.skillCd=0; game.skillT=0; game.scareFx=0; game.winner="";
-    game.eatT=0; game.belly=[]; game.swingFx=0; game.healChan=null; game.reviveChan=null; chestState="intact"; chestCarrier=null;
+    game.coins=0; game.time=0; game.skillCd=0; game.skillT=0; game.scareFx=0; game.winner="";
+    game.eatT=0; game.belly=[]; game.swingFx=0; game.healChan=null; game.reviveChan=null;
     game.huntStarted=false; game.enterT=0; game.roundCounted=false; game.carOpen=false; game.spawnT=0;
-    game.treasureValue=0; game.aibiCaught=0; game.aibiCd=0; game.chestOpened=false; game.hasAibi=false; chestState="intact"; chestCarrier=null;
+    game.haul=[]; game.aibiCaught=0; game.aibiCd=0; game.hasAibi=false; chests=[];
     generateLevel();
-    player.x=player.startX; player.y=player.startY; player.vx=0; player.vy=0; player.invuln=0;
-    updateHud(); hideOverlay();
+    player.x=player.startX; player.y=player.startY; player.vx=0; player.vy=0; player.invuln=0; player.jumpT=0;
+    updateHud(); hideOverlay(); renderHaul();
   }
   function togglePause() {
     if (game.state===STATE.PLAYING){ game.state=STATE.PAUSED; showOverlay("已暂停","喘口气，幽灵也在等～","继续冒险",false); }
@@ -995,7 +1102,7 @@
 
   // ===== 撤离金额系统 =====
   function aibiValue(){ return game.hasAibi ? 50000 + game.aibiCaught*5000 : 0; }          // 黄金艾比基础5万+每捕获一只+5千
-  function gameValue(){ return game.treasureValue + aibiValue() + game.gems*200; }          // 宝物+艾比+宝石(1颗=200)
+  function gameValue(){ return game.haul.reduce((s,t)=>s+t.value,0) + aibiValue() + game.coins*200; }   // 未卖宝物+艾比+惊魂币(1颗=200)
   function evacuateTarget(){ return MAPS[game.map].evacuate[game.difficulty]; }
   function canEvacuate(){ return gameValue() >= evacuateTarget(); }
   let lastEvacTxt="";
@@ -1008,36 +1115,52 @@
     if (txt!==lastEvacTxt){ lastEvacTxt=txt; el.textContent=txt; }
   }
 
-  // ===== 吃与宝箱 =====
-  function openChest(txt){   // 开宝箱：随机开出宝物，不再直接胜利（撤离金额达标才能撤离）
-    if (game.chestOpened) return;
-    game.chestOpened=true; chestState="opened";
-    const roll=Math.random();
-    const pool = roll<0.6 ? TREASURES.basic : TREASURES.legend;   // 典藏60% / 至臻40%
-    const item=pool[(Math.random()*pool.length)|0];
-    game.treasureValue += item.value;
-    if (item.name==="黄金艾比") game.hasAibi=true;
-    addFloat(treasure.x, treasure.y-22, txt+" 获得 "+item.name+" ¥"+item.value, item.color);
-    updateEvacHud();
+  // ===== 宝箱 =====
+  function nearestChest(x, y, dist){   // 最近的未开启、未被吞的宝箱
+    let best=null, bd=dist;
+    for (const c of chests){
+      if (c.opened || c.carried) continue;
+      const d=Math.hypot(c.x-x, c.y-y);
+      if (d<bd){ bd=d; best=c; }
+    }
+    return best;
+  }
+  function carriedChestOf(ent){   // 某个角色肚里吞着的宝箱
+    const belly = ent===player ? game.belly : ent.belly;
+    if (!belly) return null;
+    const it=belly.find(it=>it.type==="chest");
+    return it ? it.chest : null;
+  }
+  function openChest(chest, txt){   // 开宝箱：按品质随机开出宝物（撤离金额达标才能撤离）
+    if (chest.opened) return;
+    chest.opened=true;
+    const item = chestLoot(chest.qual);
+    game.haul.push({ name:item.name, value:item.value, color:item.color, sell:Math.max(10, Math.round(item.value/500)) });
+    game.hasAibi = game.haul.some(t=>t.name==="黄金艾比");
+    addFloat(chest.x, chest.y-22, txt+" 获得 "+item.name+" ¥"+item.value, item.color);
+    updateEvacHud(); updateHud(); renderHaul();
     if (canEvacuate()){
-      addFloat(treasure.x, treasure.y-44, "撤离金额已达成！按 X 撤离", "#7cfc9b");
+      addFloat(chest.x, chest.y-44, "撤离金额已达成！按 X 撤离", "#7cfc9b");
     } else {
-      addFloat(treasure.x, treasure.y-44, "还差 ¥"+(evacuateTarget()-gameValue()).toLocaleString(), "#9ecbff");
+      addFloat(chest.x, chest.y-44, "还差 ¥"+(evacuateTarget()-gameValue()).toLocaleString(), "#9ecbff");
     }
   }
   function doEvacuate(){   // X 键撤离：胜利
+    const total = gameValue();
+    const haulTxt = game.haul.length ? game.haul.map(t=>t.name+" ¥"+t.value.toLocaleString()).join("、") : "无宝物";
+    const coinTxt = "惊魂币 ¥"+(game.coins*200).toLocaleString()+"（"+game.coins+"枚）";
     game.state=STATE.WIN;
-    bankGems();
+    bankCoins();
     finishRound();
     const aibi = game.hasAibi ? " + 黄金艾比(¥"+aibiValue().toLocaleString()+",捕获"+game.aibiCaught+"只)" : "";
     game.winner="撤离成功！";
-    showOverlay("撤离成功！", "宝物+宝石价值 ¥"+gameValue().toLocaleString()+"<br>目标 ¥"+evacuateTarget().toLocaleString()+aibi+" · 用时 "+Math.floor(game.time)+" 秒","再玩一次",true);
+    showOverlay("撤离成功！", "宝物清单："+haulTxt+"<br>"+coinTxt+" · 总计 ¥"+total.toLocaleString()+" / 目标 ¥"+evacuateTarget().toLocaleString()+aibi+" · 用时 "+Math.floor(game.time)+" 秒","再玩一次",true);
   }
   function eatGhost(eater, m, belly){
     if (m.r >= eater.r+8){ addFloat(m.x, m.y-20, "吃不掉！", "#ff8888"); return; }
     m.dead=true;
     belly.push({type: m.type==="puppet"?"puppet":(m.type==="cat"?"cat":"ghost"), t:15});
-    game.gems+=15; updateHud();
+    game.coins+=15; updateHud();
     const nm = m.type==="puppet"?"傀儡蛋":(m.type==="cat"?"偷偷猫":"小幽灵");
     addFloat(m.x, m.y-18, "吃掉"+nm+" +15", "#ffd76a");
   }
@@ -1050,45 +1173,48 @@
   function dropBelly(x, y, belly){
     if (!belly || !belly.length) return;
     for (const it of belly){
-      if (it.type==="gem"){
-        gems.push({ x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30, r:8, taken:false, ph:Math.random()*6 });
+      if (it.type==="coin"){
+        coins.push({ x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30, r:8, taken:false, ph:Math.random()*6 });
       } else if (it.type==="ghost" || it.type==="puppet" || it.type==="cat"){
         monsters.push({ type:it.type, x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30,
                         r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
                         angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
                         hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
                         face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0, visibleT:0, stealthT:0 });
-      } else if (it.type==="chest"){
-        treasure.x=x; treasure.y=y; chestState="intact"; chestCarrier=null;
+      } else if (it.type==="chest" && it.chest){
+        it.chest.x=x; it.chest.y=y; it.chest.carried=null;   // 死亡时宝箱掉在原地可再开
       }
     }
     belly.length=0;
   }
   function spitItem(ent, it){   // 15 秒消化到期：吐在原地
     const x=ent.x+(Math.random()-0.5)*24, y=ent.y+(Math.random()-0.5)*24;
-    if (it.type==="gem") gems.push({ x, y, r:8, taken:false, ph:Math.random()*6 });
+    if (it.type==="coin") coins.push({ x, y, r:8, taken:false, ph:Math.random()*6 });
     else if (it.type==="ghost" || it.type==="puppet" || it.type==="cat")
       monsters.push({ type:it.type, x, y, r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
                       angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
                       hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
                       face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0, visibleT:0, stealthT:0 });
-    else if (it.type==="chest"){
-      treasure.x=ent.x; treasure.y=ent.y; chestState="intact"; chestCarrier=null;
+    else if (it.type==="chest" && it.chest){
+      it.chest.x=ent.x; it.chest.y=ent.y; it.chest.carried=null;
       addFloat(ent.x, ent.y-24, "吐出宝箱", "#9ecbff");
     }
   }
   function spitChest(ent){
-    treasure.x=ent.x; treasure.y=ent.y;
-    chestState="intact"; chestCarrier=null;
     const belly = ent===player ? game.belly : ent.belly;
-    if (belly) { const i=belly.findIndex(it=>it.type==="chest"); if (i>=0) belly.splice(i,1); }
-    addFloat(ent.x, ent.y-24, "吐出宝箱", "#9ecbff");
+    const it = belly ? belly.find(it=>it.type==="chest") : null;
+    if (it && it.chest){
+      it.chest.x=ent.x; it.chest.y=ent.y; it.chest.carried=null;
+      belly.splice(belly.indexOf(it),1);
+      addFloat(ent.x, ent.y-24, "吐出宝箱", "#9ecbff");
+    }
   }
   function eatAction(){  // K 键：毛哆哆吃宝箱
     if (game.state!==STATE.PLAYING || game.char!=="duoduo") return;
-    if (chestState==="intact" && Math.hypot(player.x-treasure.x, player.y-treasure.y)<56){
-      chestState="carried"; chestCarrier=player;
-      game.belly.push({type:"chest", t:15});
+    const c = nearestChest(player.x, player.y, 56);
+    if (c){
+      c.carried=player;
+      game.belly.push({type:"chest", t:15, chest:c});
       addFloat(player.x, player.y-26, "吃掉宝箱！", "#ffd76a");
     }
   }
@@ -1105,8 +1231,9 @@
       game.skillT=1.6;
     }
     else if (game.char==="duoduo"){                                     // 吃
-      if (chestState==="intact" && Math.hypot(player.x-treasure.x,player.y-treasure.y)<56) openChest("你打开了宝箱");
-      else if (chestState==="carried" && chestCarrier===player) spitChest(player);
+      const c = nearestChest(player.x, player.y, 56);
+      if (c) openChest(c, "你打开了宝箱");
+      else if (carriedChestOf(player)) spitChest(player);
       else game.eatT=ch.skill.dur;
     }
     else if (game.char==="lv"){                                         // 治疗：持续引导
@@ -1141,7 +1268,7 @@
       addFloat(player.x, player.y-26, "-"+amount, "#ff5a7a");
       if (game.hp<=0){
         dropBelly(player.x, player.y, game.belly);
-        bankGems();
+        bankCoins();
         for (let i=0;i<invSlots.length;i++) invSlots[i]=null;   // 被打死：包里东西全掉光
         equipped=null; renderInv();
         game.state=STATE.DEAD;                                   // 阵亡观战：等人机复活或跳过
@@ -1296,6 +1423,7 @@
     }
 
     if (player.invuln>0) player.invuln-=dt;
+    if (player.jumpT>0) player.jumpT-=dt;
 
     // 治疗引导：每秒 +6，团队模式飘到队友身边定住
     if (game.healChan){
@@ -1367,14 +1495,15 @@
           m.lungeT-=dt;
           m.face = ne.x>=m.x ? 1 : -1;
           if (m.lungeT<=0){
-            if (m.biteTarget) hurt(m.biteTarget, 40);
+            // 目标在高台上：咬不到（怪物爬不上高台）
+            if (m.biteTarget && !onPlatform(m.biteTarget.x, m.biteTarget.y)) hurt(m.biteTarget, 40);
             m.lungeT=0; m.biteTarget=null;
           }
         } else {                             // 没被注视：快速奔跑追最近的活体（移动会发出脚步声）
           if (nd>0.1){
             const spd = cfg.chase*1.5;       // 跑得很快
             const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
-            const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
+            const okX=!hitsWall(nx, m.y, m.r, true), okY=!hitsWall(m.x, ny, m.r, true);
             if (okX) m.x=nx; if (okY) m.y=ny;
             m.face = ne.x>=m.x ? 1 : -1;
             if (okX || okY){ m.stepT-=dt; if (m.stepT<=0){ m.stepT=0.36; m.stepFx=0.5; } }   // 脚步声节奏
@@ -1393,18 +1522,22 @@
           if (nd>0.1){                                          // 现形：快速扑向目标
             const spd=cfg.chase*1.3;
             const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
-            const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
+            const okX=!hitsWall(nx, m.y, m.r, true), okY=!hitsWall(m.x, ny, m.r, true);
             if (okX) m.x=nx; if (okY) m.y=ny;
             m.face = ne.x>=m.x ? 1 : -1;
             if (okX || okY){ m.stepT-=dt; if (m.stepT<=0){ m.stepT=0.4; m.stepFx=0.5; } }   // 脚步声
-            if (m.flash<=0 && nd < m.r+16+8){ stealFrom(neObj); m.visibleT=0; m.stealthT=1.6; }   // 扑偷，缩回隐身
+            if (m.flash<=0 && nd < m.r+16+8){
+              // 目标在高台上（或玩家跳跃中）：偷不到
+              if (!onPlatform(neObj.x,neObj.y) && (neObj!==player || player.jumpT<=0)) stealFrom(neObj);
+              m.visibleT=0; m.stealthT=1.6;   // 扑空也缩回隐身
+            }
           }
         } else {
           m.stealthT-=dt;
           if (nd<cfg.detect && nd>0.1){
             const spd=cfg.chase*0.8;                            // 隐身潜行（同样有脚步声）
             const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
-            const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
+            const okX=!hitsWall(nx, m.y, m.r, true), okY=!hitsWall(m.x, ny, m.r, true);
             if (okX) m.x=nx; if (okY) m.y=ny;
             m.face = ne.x>=m.x ? 1 : -1;
             if (okX || okY){ m.stepT-=dt; if (m.stepT<=0){ m.stepT=0.4; m.stepFx=0.5; } }   // 脚步声
@@ -1413,8 +1546,8 @@
             m.wt-=dt;
             if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=0.8+Math.random()*1.4; }
             const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
-            if (!hitsWall(nx, m.y, m.r)) m.x=nx;
-            if (!hitsWall(m.x, ny, m.r)) m.y=ny;
+            if (!hitsWall(nx, m.y, m.r, true)) m.x=nx;
+            if (!hitsWall(m.x, ny, m.r, true)) m.y=ny;
           }
         }
         m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
@@ -1437,21 +1570,21 @@
         if (td<cfg.detect && td>0.1){
           const vx=(tx-m.x)/td*cfg.chase*dt, vy=(ty-m.y)/td*cfg.chase*dt;
           const nx=m.x+vx, ny=m.y+vy;
-          const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
+          const okX=!hitsWall(nx, m.y, m.r, true), okY=!hitsWall(m.x, ny, m.r, true);
           if (okX) m.x=nx; if (okY) m.y=ny;
           if (!okX && !okY){ m.angle=Math.random()*Math.PI*2; m.wanderT=0.5+Math.random()*0.5; }   // 撞墙：绕路
           if (nd<120){ m.state="charge"; m.timer=2; }   // 靠近 120px 内才停下蓄力
         } else if (m.wanderT>0){     // 绕路中：沿随机方向走一段
           m.wanderT-=dt;
           const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
-          if (!hitsWall(nx, m.y, m.r)) m.x=nx;
-          if (!hitsWall(m.x, ny, m.r)) m.y=ny;
+          if (!hitsWall(nx, m.y, m.r, true)) m.x=nx;
+          if (!hitsWall(m.x, ny, m.r, true)) m.y=ny;
         } else {
           m.wt-=dt;
           if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=0.8+Math.random()*1.4; }
           const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
-          if (!hitsWall(nx, m.y, m.r)) m.x=nx;
-          if (!hitsWall(m.x, ny, m.r)) m.y=ny;
+          if (!hitsWall(nx, m.y, m.r, true)) m.x=nx;
+          if (!hitsWall(m.x, ny, m.r, true)) m.y=ny;
         }
       }
       m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
@@ -1476,11 +1609,11 @@
     monsters=monsters.filter(m=>!m.dead);   // 清理被吃掉的幽灵
 
     if (game.state===STATE.PLAYING){   // 玩家拾取/胜利只在活着时
-      for (const g of gems){
+      for (const g of coins){
         if (g.taken) continue;
         if (Math.hypot(player.x-g.x, player.y-g.y) < player.r+g.r){
-          g.taken=true; game.gems++; updateHud();
-          if (game.char==="duoduo") game.belly.push({type:"gem", t:15});  // 毛哆哆吃下的宝石会随死亡掉落
+          g.taken=true; game.coins++; updateHud();
+          if (game.char==="duoduo") game.belly.push({type:"coin", t:15});  // 毛哆哆吃下的惊魂币会随死亡掉落
         }
       }
       // 捡地上的掉落物（鱼叉/返魂药水）
@@ -1492,9 +1625,6 @@
           addFloat(player.x,player.y-26, where? "捡起"+itemName(dp.type)+"（"+where+"）" : "背包满了","#9ecbff");
           break;
         }
-      }
-      if (Math.hypot(player.x-treasure.x, player.y-treasure.y) < player.r+16 && !game.chestOpened){
-        openChest("你亲手打开了宝箱");
       }
       // 黄金艾比球：接触怪物自动捕获，价值 +5000/只（4 秒冷却）
       if (game.hasAibi && game.aibiCd>0) game.aibiCd-=dt;
@@ -1513,6 +1643,9 @@
           addFloat(caught.x, caught.y-20, "黄金艾比捕获怪物 +5000！", "#ffb02e");
         }
       }
+      // 玩家/队友摸到未开宝箱：直接打开（开出宝物入账，不直接胜利）
+      const nc = nearestChest(player.x, player.y, player.r+16);
+      if (nc) openChest(nc, "你亲手打开了宝箱");
     }
     // 小狗跟随
     if (puppy){
@@ -1540,7 +1673,7 @@
         if (Math.hypot(m.x-th.x,m.y-th.y)<m.r+6){
           m.hp--; m.flash=0.3;
           addFloat(m.x,m.y-18,"命中 -1","#ffd76a");
-          if (m.hp<=0){ monsters=monsters.filter(x=>x!==m); game.gems+=10; updateHud(); addFloat(m.x,m.y-18,"击杀 +10","#5be0ff"); }
+          if (m.hp<=0){ monsters=monsters.filter(x=>x!==m); game.coins+=10; updateHud(); addFloat(m.x,m.y-18,"击杀 +10","#5be0ff"); }
           done=true; break;
         }
       }
@@ -1557,8 +1690,9 @@
       if (f.life<=0){ fires.splice(i,1); continue; }
       if (f.active){
         const cands=[];
-        if (player.invuln<=0 && game.state===STATE.PLAYING) cands.push(player);
-        for (const b of bots){ if (!b.dead && b.hitCd<=0 && b.hp>0) cands.push(b); }
+        // 跳跃腾空 或 站在高台上：免疫地面火焰
+        if (player.invuln<=0 && game.state===STATE.PLAYING && player.jumpT<=0 && !onPlatform(player.x,player.y)) cands.push(player);
+        for (const b of bots){ if (!b.dead && b.hitCd<=0 && b.hp>0 && !onPlatform(b.x,b.y)) cands.push(b); }
         cands.sort((a,b)=>Math.hypot(a.x-f.x,a.y-f.y)-Math.hypot(b.x-f.x,b.y-f.y));
         for (const c of cands){
           if (Math.hypot(c.x-f.x,c.y-f.y)<28 && hurt(c,20)){ f.active=false; break; }
@@ -1606,10 +1740,13 @@
       else if (b.mode==="follow"){ tx=player.x+b.fx; ty=player.y+26; }
       else {
         let best=null, bd=1e9;
-        for (const g of gems){ if(g.taken) continue; const d=Math.hypot(g.x-b.x,g.y-b.y); if(d<bd){bd=d;best=g;} }
+        for (const g of coins){ if(g.taken) continue; const d=Math.hypot(g.x-b.x,g.y-b.y); if(d<bd){bd=d;best=g;} }
         if (best){ tx=best.x; ty=best.y; }
-        else if (chestState==="intact"){ tx=treasure.x; ty=treasure.y; }
-        else { tx=player.x+b.fx*0.5; ty=player.y+20; }   // 宝箱被吞了：先归队保护
+        else {
+          const c=nearestChest(b.x, b.y, 1e9);
+          if (c){ tx=c.x; ty=c.y; }
+          else { tx=player.x+b.fx*0.5; ty=player.y+20; }   // 宝箱都被开了：先归队保护
+        }
       }
       // 附近有幽灵就逃跑
       let fg=null, fd=1e9;
@@ -1697,7 +1834,7 @@
           addFloat(target.x,target.y-18,"鱼叉 -1","#ffd76a");
           if (target.hp<=0){
             monsters=monsters.filter(x=>x!==target);
-            game.gems+=5; updateHud();
+            game.coins+=5; updateHud();
             addFloat(target.x,target.y-18,"队友击杀 +5","#5be0ff");
           }
         }
@@ -1707,21 +1844,22 @@
         addItem("harpoon");
         addFloat(player.x,player.y-26,b.skin.name+" 把鱼叉给了你","#9ecbff");
       }
-      // 帮忙捡宝石（毛哆哆吃下的会随死亡掉落）
-      for (const g of gems){
+      // 帮忙捡惊魂币（毛哆哆吃下的会随死亡掉落）
+      for (const g of coins){
         if (!g.taken && Math.hypot(b.x-g.x,b.y-g.y)<b.r+g.r){
-          g.taken=true; game.gems++; updateHud();
-          if (b.skin===CHARS.duoduo) b.belly.push({type:"gem", t:15});
+          g.taken=true; game.coins++; updateHud();
+          if (b.skin===CHARS.duoduo) b.belly.push({type:"coin", t:15});
         }
       }
       // 队友摸到宝箱：毛哆哆有小概率吃掉，其他队友直接打开（开出宝物，不直接胜利）
-      if (game.huntStarted && chestState==="intact" && Math.hypot(b.x-treasure.x,b.y-treasure.y)<b.r+16){
+      const bc = nearestChest(b.x, b.y, b.r+16);
+      if (game.huntStarted && bc){
         if (b.skin===CHARS.duoduo && Math.random()<0.12){
-          chestState="carried"; chestCarrier=b;
-          b.belly.push({type:"chest", t:15});
+          bc.carried=b;
+          b.belly.push({type:"chest", t:15, chest:bc});
           addFloat(b.x,b.y-24,"吃掉宝箱！","#ffd76a");
         } else {
-          openChest(b.skin.name+" 打开了宝箱");
+          openChest(bc, b.skin.name+" 打开了宝箱");
           return;
         }
       }
@@ -1770,8 +1908,8 @@
     game.spectate=(game.spectate+dir+ab.length)%ab.length;
     updateSpecName();
   }
-  function quitToMenu(){   // 游戏中点 ✕：退出本局回主菜单（宝石先入账）
-    bankGems();
+  function quitToMenu(){   // 游戏中点 ✕：退出本局回主菜单（惊魂币先入账）
+    bankCoins();
     finishRound();
     game.state=STATE.MENU;
     setSpectateUI();
@@ -1832,7 +1970,7 @@
         addFloat(m.x,m.y-18,"小幽灵 -1","#ffd76a");
         if (m.hp<=0){
           monsters.splice(i,1);
-          game.gems+=10; updateHud();
+          game.coins+=10; updateHud();
           addFloat(m.x,m.y-18,"击杀 +10","#5be0ff");
         }
       }
@@ -1895,6 +2033,14 @@
         ctx.moveTo(x+TILE*0.64,y+5); ctx.lineTo(x+TILE*0.64,y+TILE-8);
         ctx.stroke();
       }
+    } else if (grid[r][c]===CELL.PLATFORM){
+      // 方块高台：抬高的方块（玩家可站上去躲怪，怪物视为墙）
+      ctx.fillStyle="rgba(0,0,0,.32)"; ctx.fillRect(x+5,y+TILE-11,TILE-6,11);   // 落地阴影
+      ctx.fillStyle="#3a3555"; ctx.fillRect(x+4,y+4,TILE-12,TILE-13);           // 侧面
+      ctx.fillStyle="#5d5580"; ctx.fillRect(x+4,y+4,TILE-12,TILE-16);           // 顶面
+      ctx.strokeStyle="rgba(255,255,255,.14)"; ctx.lineWidth=1.5;
+      ctx.strokeRect(x+5.5,y+5.5,TILE-15,TILE-17);
+      ctx.fillStyle="rgba(255,255,255,.25)"; ctx.fillRect(x+6,y+6,5,4);
     } else {
       ctx.fillStyle=th.ground; ctx.fillRect(x,y,TILE,TILE);
       ctx.strokeStyle="rgba(255,255,255,.04)"; ctx.strokeRect(x+0.5,y+0.5,TILE-1,TILE-1);
@@ -2251,22 +2397,32 @@
     }
 
     const t=performance.now()/1000;
-    for (const g of gems){ if(g.taken) continue;
+    // 惊魂币拾取物（金色硬币）
+    for (const g of coins){ if(g.taken) continue;
       const yy=g.y+Math.sin(t*3+g.ph)*2;
-      ctx.fillStyle="#5be0ff"; ctx.beginPath(); ctx.arc(g.x,yy,g.r,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle="#bff4ff"; ctx.beginPath(); ctx.arc(g.x-2,yy-2,3,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#ffd76a"; ctx.beginPath(); ctx.arc(g.x,yy,g.r,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#fff2c9"; ctx.beginPath(); ctx.arc(g.x,yy,g.r*0.55,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#b8860b"; ctx.beginPath(); ctx.arc(g.x-2,yy-2,2,0,Math.PI*2); ctx.fill();
     }
-    if (game.chestOpened){                 // 已开过的宝箱：空箱（盖子翻开）
-      ctx.fillStyle="#8a6a3a"; ctx.fillRect(treasure.x-14,treasure.y-4,28,16);
-      ctx.fillStyle="#5a4426"; ctx.fillRect(treasure.x-14,treasure.y-8,28,6);
-      ctx.fillStyle="rgba(0,0,0,.35)"; ctx.fillRect(treasure.x-10,treasure.y-2,20,10);
-    } else {
-      const tg=ctx.createRadialGradient(treasure.x,treasure.y,2,treasure.x,treasure.y,34);
-      tg.addColorStop(0,"rgba(255,200,90,.6)"); tg.addColorStop(1,"rgba(255,200,90,0)");
-      ctx.fillStyle=tg; ctx.beginPath(); ctx.arc(treasure.x,treasure.y,34,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle="#ffc85a"; ctx.fillRect(treasure.x-14,treasure.y-4,28,18);
-      ctx.fillStyle="#c8902f"; ctx.fillRect(treasure.x-14,treasure.y-12,28,9);
-      ctx.fillStyle="#7a5510"; ctx.fillRect(treasure.x-3,treasure.y-2,6,7);
+    // 宝箱（按品质上色；被吞的挂在吞它的人头顶）
+    for (const c of chests){
+      if (c.carried) continue;
+      const qc = CHEST_QUAL[c.qual];
+      if (c.opened){                 // 已开过的宝箱：空箱（盖子翻开）
+        ctx.fillStyle="#8a6a3a"; ctx.fillRect(c.x-14,c.y-4,28,16);
+        ctx.fillStyle="#5a4426"; ctx.fillRect(c.x-14,c.y-8,28,6);
+        ctx.fillStyle="rgba(0,0,0,.35)"; ctx.fillRect(c.x-10,c.y-2,20,10);
+      } else {
+        const tg=ctx.createRadialGradient(c.x,c.y,2,c.x,c.y,34);
+        tg.addColorStop(0, qc.color+"aa"); tg.addColorStop(1, qc.color+"00");
+        ctx.fillStyle=tg; ctx.beginPath(); ctx.arc(c.x,c.y,34,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=qc.color; ctx.fillRect(c.x-14,c.y-4,28,18);
+        ctx.fillStyle="#c8902f"; ctx.fillRect(c.x-14,c.y-12,28,9);
+        ctx.fillStyle="#7a5510"; ctx.fillRect(c.x-3,c.y-2,6,7);
+        ctx.fillStyle="#1a0f24"; ctx.font="bold 8px sans-serif"; ctx.textAlign="center";
+        ctx.fillText(qc.label.replace("宝箱",""), c.x, c.y+10);
+        ctx.textAlign="left";
+      }
     }
 
     // AI 队友（带技能特效；阵亡的留下尸体）
@@ -2284,7 +2440,8 @@
     } else if (!(player.invuln>0 && (Math.floor(t*12)%2===0))){
       const sk=game.skin;
       const rolling=game.char==="huang"&&game.skillT>0;
-      const bob= rolling ? 0 : (game.healChan ? Math.sin(t*6)*3.5 : Math.sin(t*8)*1.8);
+      const jumpH = player.jumpT>0 ? Math.sin((1-player.jumpT/0.55)*Math.PI)*30 : 0;   // 跳跃腾空
+      const bob= (rolling?0:(game.healChan?Math.sin(t*6)*3.5:Math.sin(t*8)*1.8)) - jumpH;
       drawEgg(player.x,player.y,sk.body,sk.shell,1,player.face, bob, rolling?game.rollAngle:0);
     }
     // 手持物品（装备鱼叉时手上握着鱼叉）
@@ -2388,20 +2545,22 @@
 
     // 队友模式标签 & 技能冒字（黑暗之上，保证可见）
     ctx.textAlign="center";
-    // 宝箱交互提示
+    // 宝箱交互提示（靠近最近未开宝箱）
     if (game.state===STATE.PLAYING){
-      if (chestState!=="carried" && Math.hypot(player.x-treasure.x,player.y-treasure.y)<56){
+      const nc = nearestChest(player.x, player.y, 56);
+      if (nc){
         ctx.font="bold 12px sans-serif"; ctx.fillStyle="#ffd76a";
-        ctx.fillText(game.char==="duoduo" ? "J 打开 / K 吃掉" : "J 打开宝箱", treasure.x, treasure.y-24);
-      } else if (chestState==="carried" && chestCarrier===player){
+        ctx.fillText(game.char==="duoduo" ? "J 打开 / K 吃掉" : "J 打开宝箱", nc.x, nc.y-24);
+      } else if (carriedChestOf(player)){
         ctx.font="bold 12px sans-serif"; ctx.fillStyle="#ffd76a";
         ctx.fillText("J 吐出宝箱", player.x, player.y-32);
       }
       // 吞了宝箱的队友头顶挂个小宝箱
-      if (chestState==="carried" && chestCarrier){
-        const c=chestCarrier;
-        ctx.fillStyle="#ffc85a"; ctx.fillRect(c.x-6, c.y-36, 12, 8);
-        ctx.fillStyle="#c8902f"; ctx.fillRect(c.x-6, c.y-40, 12, 5);
+      for (const c of chests){
+        if (!c.carried) continue;
+        const cc=c.carried;
+        ctx.fillStyle="#ffc85a"; ctx.fillRect(cc.x-6, cc.y-36, 12, 8);
+        ctx.fillStyle="#c8902f"; ctx.fillRect(cc.x-6, cc.y-40, 12, 5);
       }
       // 肚子状态：几件 + 最快消化剩余秒数
       const bellies=[];
@@ -2544,13 +2703,16 @@
       }
     }
 
-    // 罗盘：指向宝箱（被吞时指向吞下它的队友）
-    const ccx = (chestState==="carried" && chestCarrier) ? chestCarrier.x : treasure.x;
-    const ccy = (chestState==="carried" && chestCarrier) ? chestCarrier.y : treasure.y;
-    const ang=Math.atan2(ccy-player.y, ccx-player.x);
-    ctx.save(); ctx.translate(player.x+Math.cos(ang)*30, player.y+Math.sin(ang)*30); ctx.rotate(ang);
-    ctx.fillStyle=th.accent; ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(-5,-5); ctx.lineTo(-2,0); ctx.lineTo(-5,5); ctx.closePath(); ctx.fill();
-    ctx.restore();
+    // 罗盘：指向最近的未开宝箱（被吞时指向吞下它的队友）；全部开完则隐藏
+    let ccx=null, ccy=null;
+    for (const c of chests){ if (c.carried){ ccx=c.carried.x; ccy=c.carried.y; break; } }
+    if (ccx===null){ const c=nearestChest(player.x, player.y, 1e9); if (c){ ccx=c.x; ccy=c.y; } }
+    if (ccx!==null){
+      const ang=Math.atan2(ccy-player.y, ccx-player.x);
+      ctx.save(); ctx.translate(player.x+Math.cos(ang)*30, player.y+Math.sin(ang)*30); ctx.rotate(ang);
+      ctx.fillStyle=th.accent; ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(-5,-5); ctx.lineTo(-2,0); ctx.lineTo(-5,5); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
   }
 
   // ===== 主循环 =====
