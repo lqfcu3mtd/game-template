@@ -95,6 +95,7 @@
       <span>宝石 <b id="gems">0</b></span>
       <span>技能 <b id="skill">疾跑 ·就绪</b></span>
       <span>时间 <b id="time">0</b>s</span>
+      <span id="evac" style="color:#7cfc9b">撤离 ¥0 / ¥0</span>
     </div>
     <div class="stage">
       <canvas id="game" width="660" height="484"></canvas>
@@ -164,7 +165,7 @@
             <button class="start" id="ov-btn">开始冒险</button>
             <button class="start" id="shopBtn">商城</button>
           </div>
-          <p class="hint">WASD 移动 · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头（盯住身后脚步声） · E 开门/刷卡/上下购物车 · 点击快捷栏装备 · 空格暂停 · R 换图</p>
+          <p class="hint">WASD 移动 · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头 · X 撤离（金额达标） · E 开门/刷卡/上下购物车 · 点击快捷栏装备 · 空格暂停 · R 换图</p>
         </div>
       </div>
     </div>
@@ -299,13 +300,29 @@
   const MAPS = {
     castle: { label:"温斯洛古堡", accent:"#ff7ac6", bg:"#0a0810", ground:"#171327",
               wall:"#2c2740", wallTop:"#3a3358", wallStyle:"block",  floater:"170,150,255",
-              mech:"carwall", sideDoor:true },   // 大车+车门蓝墙；大门常开；右侧楼梯侧门
+              mech:"carwall", sideDoor:true, evacuate:{ easy:20000, normal:60000, hard:140000 } },   // 古堡最简单
     market: { label:"好蛋来超市", accent:"#ffd24a", bg:"#101418", ground:"#1c2630",
               wall:"#37506a", wallTop:"#4a6f93", wallStyle:"shelf",  floater:"120,200,255",
-              mech:"carwall", sideDoor:true, cart:true, sewer:true },   // 超市：路径远，有购物车加速；外部区井盖下下水道
+              mech:"carwall", sideDoor:true, cart:true, sewer:true,
+              evacuate:{ easy:30000, normal:80000, hard:170000 } },   // 超市中等
     asylum: { label:"怪蛋疯人院", accent:"#7cfc9b", bg:"#0c120e", ground:"#16201a",
               wall:"#2f4a36", wallTop:"#3f6347", wallStyle:"bars",   floater:"150,255,170",
-              mech:"carwall", cart:true, sewer:true, frontHall:true },   // 疯人院：推车+前厅三门（右上楼梯下地下室/左爬楼梯/正门直走）
+              mech:"carwall", cart:true, sewer:true, frontHall:true,
+              evacuate:{ easy:30000, normal:80000, hard:200000 } },   // 疯人院最难
+  };
+
+  // ===== 宝箱宝物 =====
+  const TREASURES = {
+    basic: [ // 典藏宝物
+      { name:"彩窗圆盘", value:10000, color:"#ffd24a" },
+      { name:"镀金怀表", value:12000, color:"#ffd24a" },
+      { name:"水晶沙漏", value:15000, color:"#9ecbff" },
+    ],
+    legend: [ // 至臻宝物
+      { name:"黄金圣杯", value:60000, color:"#ff9e3a" },
+      { name:"黄金书",   value:30000, color:"#ffd76a" },
+      { name:"黄金艾比", value:50000, color:"#ffb02e" },   // 可捕获怪物升值
+    ],
   };
 
   // ===== 角色配置（含专属技能）=====
@@ -325,6 +342,7 @@
     eatT: 0, belly: [], healFx: 0, swingFx: 0, healChan: null, reviveChan: null,
     spectate: 0, potReviveT: 0, huntStarted: false, enterT: 0, roundCounted: false,
     carOpen: false, cartPush: false, cartMode: false, gateChan: null, ridingCart: null, inSewer: false, spawnT: 0,   // 车门 / 购物车 / 进门鉴 / 下水道 / 刷怪计时
+    treasureValue: 0, aibiCaught: 0, aibiCd: 0, chestOpened: false, hasAibi: false,   // 撤离金额 / 黄金艾比捕获
     teammates: ["puff","duoduo","lv"], matesCustomized: false, mateCount: 3,
     difficulty: "easy", map: "castle", char: "huang",
     cfg: DIFF.normal, theme: MAPS.castle, skin: CHARS.huang,
@@ -530,6 +548,7 @@
       player.face*=-1;
       addFloat(player.x, player.y-26, "回头！", "#ffd76a");
     }
+    if (k === "x" && game.state===STATE.PLAYING && canEvacuate()) doEvacuate();   // X 撤离（金额达标后）
     if (k === "e" && game.state===STATE.PLAYING){
       let done=false;
       if (game.theme.mech==="carwall" && game.time>=18 && !game.carOpen){ openCarDoor(); done=true; }
@@ -644,6 +663,7 @@
     document.getElementById("hp").textContent = game.hp;
     document.getElementById("gems").textContent = game.gems;
     document.getElementById("time").textContent = Math.floor(game.time);
+    updateEvacHud();
   }
 
   // 难度 / 地图选择
@@ -932,6 +952,7 @@
     game.gems=0; game.time=0; game.skillCd=0; game.skillT=0; game.scareFx=0; game.winner="";
     game.eatT=0; game.belly=[]; game.swingFx=0; game.healChan=null; game.reviveChan=null; chestState="intact"; chestCarrier=null;
     game.huntStarted=false; game.enterT=0; game.roundCounted=false; game.carOpen=false; game.spawnT=0;
+    game.treasureValue=0; game.aibiCaught=0; game.aibiCd=0; game.chestOpened=false; game.hasAibi=false; chestState="intact"; chestCarrier=null;
     generateLevel();
     player.x=player.startX; player.y=player.startY; player.vx=0; player.vy=0; player.invuln=0;
     updateHud(); hideOverlay();
@@ -972,13 +993,45 @@
     return false;
   }
 
+  // ===== 撤离金额系统 =====
+  function aibiValue(){ return game.hasAibi ? 50000 + game.aibiCaught*5000 : 0; }          // 黄金艾比基础5万+每捕获一只+5千
+  function gameValue(){ return game.treasureValue + aibiValue() + game.gems*200; }          // 宝物+艾比+宝石(1颗=200)
+  function evacuateTarget(){ return MAPS[game.map].evacuate[game.difficulty]; }
+  function canEvacuate(){ return gameValue() >= evacuateTarget(); }
+  let lastEvacTxt="";
+  function updateEvacHud(){
+    const el=document.getElementById("evac");
+    if (!el) return;
+    const txt = canEvacuate()
+      ? "撤离 ¥"+gameValue().toLocaleString()+" 目标达成 ✓ 按X撤离"
+      : "撤离 ¥"+gameValue().toLocaleString()+" / ¥"+evacuateTarget().toLocaleString();
+    if (txt!==lastEvacTxt){ lastEvacTxt=txt; el.textContent=txt; }
+  }
+
   // ===== 吃与宝箱 =====
-  function openChest(txt){
+  function openChest(txt){   // 开宝箱：随机开出宝物，不再直接胜利（撤离金额达标才能撤离）
+    if (game.chestOpened) return;
+    game.chestOpened=true; chestState="opened";
+    const roll=Math.random();
+    const pool = roll<0.6 ? TREASURES.basic : TREASURES.legend;   // 典藏60% / 至臻40%
+    const item=pool[(Math.random()*pool.length)|0];
+    game.treasureValue += item.value;
+    if (item.name==="黄金艾比") game.hasAibi=true;
+    addFloat(treasure.x, treasure.y-22, txt+" 获得 "+item.name+" ¥"+item.value, item.color);
+    updateEvacHud();
+    if (canEvacuate()){
+      addFloat(treasure.x, treasure.y-44, "撤离金额已达成！按 X 撤离", "#7cfc9b");
+    } else {
+      addFloat(treasure.x, treasure.y-44, "还差 ¥"+(evacuateTarget()-gameValue()).toLocaleString(), "#9ecbff");
+    }
+  }
+  function doEvacuate(){   // X 键撤离：胜利
     game.state=STATE.WIN;
     bankGems();
     finishRound();
-    game.winner=txt;
-    showOverlay("全队胜利！", txt+"<br>宝石 "+game.gems+" · 用时 "+Math.floor(game.time)+" 秒","再玩一次",true);
+    const aibi = game.hasAibi ? " + 黄金艾比(¥"+aibiValue().toLocaleString()+",捕获"+game.aibiCaught+"只)" : "";
+    game.winner="撤离成功！";
+    showOverlay("撤离成功！", "宝物+宝石价值 ¥"+gameValue().toLocaleString()+"<br>目标 ¥"+evacuateTarget().toLocaleString()+aibi+" · 用时 "+Math.floor(game.time)+" 秒","再玩一次",true);
   }
   function eatGhost(eater, m, belly){
     if (m.r >= eater.r+8){ addFloat(m.x, m.y-20, "吃不掉！", "#ff8888"); return; }
@@ -1440,10 +1493,25 @@
           break;
         }
       }
-      if (Math.hypot(player.x-treasure.x, player.y-treasure.y) < player.r+16){
-        game.state=STATE.WIN;
-        game.winner="你亲手打开了宝箱";
-        showOverlay("全队胜利！", game.winner+"<br>宝石 "+game.gems+" · 用时 "+Math.floor(game.time)+" 秒 · 剩余生命 "+game.hp,"再玩一次",true);
+      if (Math.hypot(player.x-treasure.x, player.y-treasure.y) < player.r+16 && !game.chestOpened){
+        openChest("你亲手打开了宝箱");
+      }
+      // 黄金艾比球：接触怪物自动捕获，价值 +5000/只（4 秒冷却）
+      if (game.hasAibi && game.aibiCd>0) game.aibiCd-=dt;
+      if (game.hasAibi && game.aibiCd<=0){
+        let caught=null, cd2=20;
+        for (const m of monsters){
+          if (m.dead) continue;
+          const d=Math.hypot(m.x-player.x, m.y-player.y);
+          if (d<cd2){ cd2=d; caught=m; }
+        }
+        if (caught){
+          caught.dead=true;
+          game.aibiCaught++;
+          game.aibiCd=4;
+          updateEvacHud();
+          addFloat(caught.x, caught.y-20, "黄金艾比捕获怪物 +5000！", "#ffb02e");
+        }
       }
     }
     // 小狗跟随
@@ -1646,7 +1714,7 @@
           if (b.skin===CHARS.duoduo) b.belly.push({type:"gem", t:15});
         }
       }
-      // 队友摸到宝箱：毛哆哆有小概率吃掉，其他队友直接打开 → 全队胜利
+      // 队友摸到宝箱：毛哆哆有小概率吃掉，其他队友直接打开（开出宝物，不直接胜利）
       if (game.huntStarted && chestState==="intact" && Math.hypot(b.x-treasure.x,b.y-treasure.y)<b.r+16){
         if (b.skin===CHARS.duoduo && Math.random()<0.12){
           chestState="carried"; chestCarrier=b;
@@ -2188,12 +2256,18 @@
       ctx.fillStyle="#5be0ff"; ctx.beginPath(); ctx.arc(g.x,yy,g.r,0,Math.PI*2); ctx.fill();
       ctx.fillStyle="#bff4ff"; ctx.beginPath(); ctx.arc(g.x-2,yy-2,3,0,Math.PI*2); ctx.fill();
     }
-    const tg=ctx.createRadialGradient(treasure.x,treasure.y,2,treasure.x,treasure.y,34);
-    tg.addColorStop(0,"rgba(255,200,90,.6)"); tg.addColorStop(1,"rgba(255,200,90,0)");
-    ctx.fillStyle=tg; ctx.beginPath(); ctx.arc(treasure.x,treasure.y,34,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle="#ffc85a"; ctx.fillRect(treasure.x-14,treasure.y-4,28,18);
-    ctx.fillStyle="#c8902f"; ctx.fillRect(treasure.x-14,treasure.y-12,28,9);
-    ctx.fillStyle="#7a5510"; ctx.fillRect(treasure.x-3,treasure.y-2,6,7);
+    if (game.chestOpened){                 // 已开过的宝箱：空箱（盖子翻开）
+      ctx.fillStyle="#8a6a3a"; ctx.fillRect(treasure.x-14,treasure.y-4,28,16);
+      ctx.fillStyle="#5a4426"; ctx.fillRect(treasure.x-14,treasure.y-8,28,6);
+      ctx.fillStyle="rgba(0,0,0,.35)"; ctx.fillRect(treasure.x-10,treasure.y-2,20,10);
+    } else {
+      const tg=ctx.createRadialGradient(treasure.x,treasure.y,2,treasure.x,treasure.y,34);
+      tg.addColorStop(0,"rgba(255,200,90,.6)"); tg.addColorStop(1,"rgba(255,200,90,0)");
+      ctx.fillStyle=tg; ctx.beginPath(); ctx.arc(treasure.x,treasure.y,34,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#ffc85a"; ctx.fillRect(treasure.x-14,treasure.y-4,28,18);
+      ctx.fillStyle="#c8902f"; ctx.fillRect(treasure.x-14,treasure.y-12,28,9);
+      ctx.fillStyle="#7a5510"; ctx.fillRect(treasure.x-3,treasure.y-2,6,7);
+    }
 
     // AI 队友（带技能特效；阵亡的留下尸体）
     for (const b of bots){
