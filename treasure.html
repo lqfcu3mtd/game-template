@@ -259,12 +259,12 @@
     g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
     c.fillStyle = g; c.fillRect(x-r, y-r, r*2, r*2);
   }
-  function punchCone(c, x, y, r, face) {   // 扇形视野：面朝方向前方 270°，身后 90° 看不见
+  function punchCone(c, x, y, r, face) {   // 扇形视野：只能看到面朝方向正前方 180°，左右和身后都是黑暗
     c.save();
     c.beginPath();
     c.moveTo(x, y);
-    if (face>0) c.arc(x, y, r, -Math.PI*0.75, Math.PI*0.75);   // 朝右：-135°→135° 顺时针
-    else        c.arc(x, y, r,  Math.PI*0.25, Math.PI*1.75);   // 朝左： 45°→315° 顺时针
+    if (face>0) c.arc(x, y, r, -Math.PI*0.5, Math.PI*0.5);   // 朝右：-90°→90°
+    else        c.arc(x, y, r,  Math.PI*0.5, Math.PI*1.5);   // 朝左： 90°→270°
     c.closePath();
     const lg = c.createRadialGradient(x, y, r*0.1, x, y, r);
     lg.addColorStop(0, "rgba(0,0,0,1)");
@@ -2162,7 +2162,7 @@
     dctx.fillStyle="rgba(10,8,16,0.97)";
     dctx.fillRect(0,0,W,H_TOT);
     dctx.globalCompositeOperation="destination-out";
-    // 玩家扇形视野：只能看到前面+左右，身后 90° 是黑暗
+    // 玩家扇形视野：只能看到正前方 180°，左右和身后都是黑暗
     punchCone(dctx, player.x, player.y, light, player.face);
     punch(dctx, player.x, player.y, 48);          // 脚下小光斑，保证贴脸可见
     for (const L of lights) punch(dctx, L.star?L.x:L.e.x, L.star?L.y:L.e.y, L.r);
