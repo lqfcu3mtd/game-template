@@ -941,6 +941,37 @@
     else if (game.state===STATE.PAUSED){ game.state=STATE.PLAYING; hideOverlay(); }
   }
 
+  // ===== 偷偷猫偷窃：玩家→先偷背包（不碰快捷栏），背包空才偷宠物包；人机→偷鱼叉/药水 =====
+  function stealFrom(t){
+    if (t===player){
+      const n=hotN(), b=bagN(), ps=petStart(), p=petN();
+      for (let i=n;i<n+b;i++){                        // 背包格
+        if (invSlots[i]){
+          const it=invSlots[i]; invSlots[i]=null; renderInv();
+          drops.push({ x:t.x+(Math.random()-0.5)*30, y:t.y+(Math.random()-0.5)*30, type:it.type });
+          addFloat(t.x, t.y-26, "偷偷猫偷走了"+itemName(it.type)+"！", "#ff9ecb");
+          return true;
+        }
+      }
+      for (let i=ps;i<ps+p;i++){                      // 背包空了才偷宠物包
+        if (invSlots[i]){
+          const it=invSlots[i]; invSlots[i]=null; renderInv();
+          drops.push({ x:t.x+(Math.random()-0.5)*30, y:t.y+(Math.random()-0.5)*30, type:it.type });
+          addFloat(t.x, t.y-26, "偷偷猫偷走了"+itemName(it.type)+"！", "#ff9ecb");
+          return true;
+        }
+      }
+      addFloat(t.x, t.y-26, "包里空空，没得偷", "#9ecbff");
+      return false;
+    }
+    if (t.hasHarpoon){ t.hasHarpoon=false; drops.push({ x:t.x, y:t.y, type:"harpoon" });
+      addFloat(t.x, t.y-22, t.skin.name+" 的鱼叉被偷了！", "#ff9ecb"); return true; }
+    if (t.potions>0){ t.potions--; drops.push({ x:t.x, y:t.y, type:"revive" });
+      addFloat(t.x, t.y-22, t.skin.name+" 的药水被偷了！", "#ff9ecb"); return true; }
+    addFloat(t.x, t.y-22, "没东西可偷", "#9ecbff");
+    return false;
+  }
+
   // ===== 吃与宝箱 =====
   function openChest(txt){
     game.state=STATE.WIN;
@@ -1302,7 +1333,7 @@
         if (m.spawnFx>0) m.spawnFx-=dt;
         if (m.stepFx>0) m.stepFx-=dt;
       } else if (m.type==="cat"){
-        // 偷偷猫：隐身悄悄接近 → 靠近现形扑咬（-20）→ 缩回隐身；被攻击强制现形
+        // 偷偷猫：隐身潜行（发脚步声）→ 靠近现形扑偷（偷背包，不造成伤害）→ 缩回隐身；被攻击强制现形
         m.visibleT-=dt;
         if (m.flash>0) m.visibleT=Math.max(m.visibleT, 1.5);   // 被击现形
         if (m.visibleT>0){
@@ -1312,17 +1343,19 @@
             const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
             if (okX) m.x=nx; if (okY) m.y=ny;
             m.face = ne.x>=m.x ? 1 : -1;
-            if (m.flash<=0 && nd < m.r+16+8){ hurt(neObj, 20); m.visibleT=0; m.stealthT=1.2; }   // 扑咬 -20，缩回隐身（被击现形期间不扑咬）
+            if (okX || okY){ m.stepT-=dt; if (m.stepT<=0){ m.stepT=0.4; m.stepFx=0.5; } }   // 脚步声
+            if (m.flash<=0 && nd < m.r+16+8){ stealFrom(neObj); m.visibleT=0; m.stealthT=1.6; }   // 扑偷，缩回隐身
           }
         } else {
           m.stealthT-=dt;
           if (nd<cfg.detect && nd>0.1){
-            const spd=cfg.chase*0.8;                            // 隐身潜行
+            const spd=cfg.chase*0.8;                            // 隐身潜行（同样有脚步声）
             const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
             const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
             if (okX) m.x=nx; if (okY) m.y=ny;
             m.face = ne.x>=m.x ? 1 : -1;
-            if (nd<140 && m.stealthT<=0){ m.visibleT=0.7; }     // 够近才现形扑咬
+            if (okX || okY){ m.stepT-=dt; if (m.stepT<=0){ m.stepT=0.4; m.stepFx=0.5; } }   // 脚步声
+            if (nd<140 && m.stealthT<=0){ m.visibleT=0.7; }     // 够近才现形扑偷
           } else {
             m.wt-=dt;
             if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=0.8+Math.random()*1.4; }
@@ -1334,6 +1367,7 @@
         m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
         if (m.flash>0) m.flash-=dt;
         if (m.spawnFx>0) m.spawnFx-=dt;
+        if (m.stepFx>0) m.stepFx-=dt;
       } else if (m.stun>0){
         m.stun-=dt;
       } else if (m.state==="charge"){
@@ -2380,14 +2414,14 @@
         ctx.fillStyle="#9ecbff";
         ctx.fillText("从大门进入开始寻宝", player.x, player.y-34);
       } else {
-        // 脚步声提示：附近有跑动的傀儡蛋 → 按 Q 回头盯住它
+        // 脚步声提示：附近有跑动的傀儡蛋/偷偷猫 → 按 Q 回头盯住它（猫看不到但听得到）
         let near=false;
         for (const m of monsters){
-          if (m.type==="puppet" && !m.watched && m.lungeT<=0 && Math.hypot(m.x-player.x,m.y-player.y)<300){ near=true; break; }
+          if (Math.hypot(m.x-player.x,m.y-player.y)<300 && m.stepFx>0){ near=true; break; }
         }
         if (near){
           ctx.fillStyle="#ffd76a"; ctx.font="bold 13px sans-serif";
-          ctx.fillText("👂 听到脚步声！按 Q 回头盯住它", player.x, player.y-40);
+          ctx.fillText("👂 听到脚步声！按 Q 回头", player.x, player.y-40);
         }
       }
       ctx.textAlign="left";
