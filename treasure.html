@@ -395,6 +395,7 @@
     eatT: 0, belly: [], healFx: 0, swingFx: 0, healChan: null, reviveChan: null,
     spectate: 0, potReviveT: 0, huntStarted: false, enterT: 0, roundCounted: false,
     carOpen: false, cartPush: false, cartMode: false, gateChan: null, ridingCart: null, inSewer: false, spawnT: 0,   // 车门 / 购物车 / 进门鉴 / 下水道 / 刷怪计时
+    floor: 1, carryHajime: false, hajimeTarget: null,   // 古堡楼层 / 抱起哈基米带路
     aibiCaught: 0, aibiCd: 0, hasAibi: false, chestFullMsgT: 0,   // 黄金艾比捕获 / 开箱背包满提示冷却
     teammates: ["puff","duoduo","lv"], matesCustomized: false, mateCount: 3,
     difficulty: "easy", map: "castle", char: "huang",
@@ -404,6 +405,11 @@
 
   // ===== 实体 =====
   let grid = [];
+  let gridByFloor = [];                        // 古堡三层：每层一份 grid（当前 grid 指向其中一层）
+  let chestsByFloor = [], coinsByFloor = [], groundTByFloor = [], monstersByFloor = [], spawnTByFloor = [];
+  const STAIR_A = { r: ROWS-2, c: COLS-2 };    // 古堡楼梯口 A（右下）：1F上2F / 2F下1F
+  const STAIR_B = { r: 2, c: COLS-2 };         // 古堡楼梯口 B（顶部）：2F上3F / 3F下2F
+  const stairsFor = (f) => f===1 ? [STAIR_A] : (f===2 ? [STAIR_A, STAIR_B] : [STAIR_B]);   // 每层可见楼梯口
   let player = { x: 0, y: 0, r: 14, face: 1, invuln: 0, jumpT: 0, startX: 0, startY: 0 };
   let chests = [];                              // 宝箱数组：{x,y,qual,opened,carried}
   let monsters = [], coins = [], groundT = [], bots = [], floaters = [], floatTexts = [], lights = [], fires = [], waves = [], drops = [], throwns = [];
@@ -655,7 +661,9 @@
     if (k === "x" && game.state===STATE.PLAYING && canEvacuate() && isAtCar()) doEvacuate();   // X 撤离：必须回到车里且金额达标
     if (k === "e" && game.state===STATE.PLAYING){
       let done=false;
-      if (game.theme.mech==="carwall" && game.time>=18 && !game.carOpen){ openCarDoor(); done=true; }
+      if (hajimeInteract()) done=true;                 // 抱起/放下哈基米（带路找宝物）
+      if (!done && stairInteract()) done=true;         // 古堡楼梯口换层
+      if (!done && game.theme.mech==="carwall" && game.time>=18 && !game.carOpen){ openCarDoor(); done=true; }
       if (!done && game.theme.cart && cartInteract()) done=true;
       if (!done) gateInteract();
     }
@@ -884,11 +892,14 @@
   function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} }
   const tileCenter = (r,c) => ({ x: c*TILE+TILE/2, y: r*TILE+TILE/2 });
 
-  function generateLevel() {
-    const cfg = game.cfg;
+  function generateFloor(f){
+    // 单层生成：返回 {grid, chests, coins, groundT}，失败返回 null
+    // 古堡三层：1F 有门缺口，2F/3F 底部封死（经顶部楼梯口进出）
+    const multi = game.map==="castle";
     for (let tries=0; tries<60; tries++) {
-      grid = Array.from({ length: ROWS }, () =>
+      const g = Array.from({ length: ROWS }, () =>
         Array.from({ length: COLS }, () => (Math.random()<0.16?CELL.WALL:CELL.EMPTY)));
+      grid = g;                                   // 让 clearAround / reachableMap 作用于本层
 
       const sr=(ROWS/2)|0, sc=(COLS/2)|0;
       clearAround(sr, sc);
@@ -902,10 +913,12 @@
       const tr=best.r, tc=best.c;
       clearAround(tr,tc);
 
-      // 地牢底部封墙，只留大门缺口（城堡另开右侧侧门；疯人院整行是前厅走廊）
+      // 底排封墙，只留大门缺口（仅 1F / 单层地图；古堡 2F/3F 整排封死）
       for (let c=0;c<COLS;c++) grid[GATE_ROW][c]=CELL.WALL;
-      grid[GATE_ROW][GATE_COL]=CELL.EMPTY;
-      if (game.theme.sideDoor) grid[GATE_ROW][COLS-1]=CELL.EMPTY;
+      if (f===1){
+        grid[GATE_ROW][GATE_COL]=CELL.EMPTY;
+        if (game.theme.sideDoor) grid[GATE_ROW][COLS-1]=CELL.EMPTY;
+      }
       if (game.theme.frontHall){                 // 疯人院：底排=前厅，三个门向上进入地牢
         for (let c=0;c<COLS;c++) grid[GATE_ROW][c]=CELL.EMPTY;   // 前厅横贯走廊
         grid[GATE_ROW-1][GATE_COL]=CELL.EMPTY;   // 正门：直走向上
@@ -914,13 +927,15 @@
       }
 
       // ===== 关键修复：打通所有入口的通道（门上方的墙必须清掉，否则进图被堵死）=====
-      const openCols = [GATE_COL];
-      if (game.theme.sideDoor) openCols.push(COLS-1);
-      if (game.theme.frontHall) openCols.push(1, 2);
-      for (const cc of openCols)
-        for (let rr=GATE_ROW-1; rr>=Math.max(0,GATE_ROW-2); rr--) grid[rr][cc]=CELL.EMPTY;
-      if (game.theme.frontHall)                    // 疯人院：前厅上方一横行贯通，左门/正门互通
-        for (let cc=0; cc<=7; cc++) grid[GATE_ROW-2][cc]=CELL.EMPTY;
+      if (f===1){
+        const openCols = [GATE_COL];
+        if (game.theme.sideDoor) openCols.push(COLS-1);
+        if (game.theme.frontHall) openCols.push(1, 2);
+        for (const cc of openCols)
+          for (let rr=GATE_ROW-1; rr>=Math.max(0,GATE_ROW-2); rr--) grid[rr][cc]=CELL.EMPTY;
+        if (game.theme.frontHall)                    // 疯人院：前厅上方一横行贯通，左门/正门互通
+          for (let cc=0; cc<=7; cc++) grid[GATE_ROW-2][cc]=CELL.EMPTY;
+      }
 
       // ===== 方块高台：把部分随机墙转为高台（玩家可站上去躲怪，怪物视为墙）=====
       const platCount = 10;
@@ -934,10 +949,80 @@
       shuffle(wallCells);
       for (let i=0;i<platCount && i<wallCells.length;i++) grid[wallCells[i].r][wallCells[i].c]=CELL.PLATFORM;
 
+      // ===== 古堡楼梯口：区域清空 + 上下通道打通（保证换层不卡墙）=====
+      if (multi){
+        clearAround(STAIR_A.r, STAIR_A.c);
+        for (let rr=STAIR_A.r-1; rr>=Math.max(0,STAIR_A.r-2); rr--) grid[rr][STAIR_A.c]=CELL.EMPTY;
+        if (f>=2){
+          clearAround(STAIR_B.r, STAIR_B.c);
+          for (let rr=STAIR_B.r+1; rr<=Math.min(ROWS-1,STAIR_B.r+2); rr++) grid[rr][STAIR_B.c]=CELL.EMPTY;
+        }
+      }
+
       // ===== 关键修复：从入口校验地图连通（封墙后的最终网格），不通就重roll =====
-      const entryR = game.theme.frontHall ? GATE_ROW-2 : GATE_ROW-1;
-      const reach = reachableMap(entryR, GATE_COL);
+      const entryR = game.theme.frontHall ? GATE_ROW-2 : (f===1 ? GATE_ROW-1 : STAIR_B.r);
+      const entryC = (f===1 ? GATE_COL : STAIR_B.c);
+      const reach = reachableMap(entryR, entryC);
       if (!reach[tr][tc]) continue;
+
+      let empties=[];
+      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
+        if (grid[r][c]===CELL.EMPTY && !(r===sr&&c===sc) && reach[r][c]) empties.push({r,c});   // 只放可达格，避免宝物刷在围墙里
+      shuffle(empties);
+
+      // 宝箱：总数量按层均分（古堡 3 层；单层地图全放本层）
+      const totalC = chestCountFor();
+      const nChest = multi ? Math.floor(totalC/3) + (f<=totalC%3?1:0) : totalC;
+      const chests=[];
+      const step = Math.max(1, Math.floor(empties.length/(nChest+1)));
+      let ei=0;
+      for (let i=0;i<nChest && ei<empties.length;i++){
+        const e=empties[Math.min(ei, empties.length-1)]; ei+=step;
+        const p=tileCenter(e.r,e.c);
+        const qr=Math.random();
+        chests.push({ x:p.x, y:p.y, qual: qr<0.55?"rare":(qr<0.85?"classic":"ultimate"), opened:false, carried:null });
+      }
+
+      // 惊魂币（古堡每层少量，单层地图原数量）
+      const coins=[];
+      const gCount = multi ? Math.min(5, (empties.length/3)|0) : Math.min(14,(empties.length/2)|0);
+      for (let k=0;k<gCount && ei<empties.length;k++){
+        const e=empties[ei++]; const p=tileCenter(e.r,e.c);
+        coins.push({ x:p.x, y:p.y, r:8, taken:false, ph:Math.random()*6 });
+      }
+
+      // 地上宝物（古堡每层 6 个，单层地图 16 个）
+      const groundT=[];
+      const gTCount = multi ? 6 : Math.min(16, empties.length);
+      for (let k=0;k<gTCount && ei<empties.length;k++){
+        const e=empties[ei++]; const p=tileCenter(e.r,e.c);
+        const it=rollGroundTreasure();
+        groundT.push({ x:p.x, y:p.y, r:9, taken:false, ph:Math.random()*6, name:it.name, value:it.value, color:it.color });
+      }
+
+      return { grid:g, chests, coins, groundT };
+    }
+    return null;
+  }
+
+  function generateLevel() {
+    const cfg = game.cfg;
+    const multi = game.map==="castle";   // 古堡：三层（主门进随机 1F/2F，侧门进固定 3F）
+    const nF = multi ? 3 : 1;
+    for (let tries=0; tries<60; tries++) {
+      const gArr=[], cArr=[], coArr=[], gtArr=[], mArr=[], stArr=[];
+      let ok=true;
+      for (let f=1; f<=nF; f++){
+        const r = generateFloor(f);
+        if (!r){ ok=false; break; }
+        gArr.push(r.grid); cArr.push(r.chests); coArr.push(r.coins); gtArr.push(r.groundT);
+        mArr.push([]); stArr.push(6);
+      }
+      if (!ok) continue;
+      gridByFloor=gArr; chestsByFloor=cArr; coinsByFloor=coArr; groundTByFloor=gtArr; monstersByFloor=mArr; spawnTByFloor=stArr;
+      // 当前层引用（进门前先指向 1F，进门后再落层）
+      game.floor=1;
+      grid=gridByFloor[0]; chests=chestsByFloor[0]; coins=coinsByFloor[0]; groundT=groundTByFloor[0]; monsters=monstersByFloor[0];
 
       // 玩家和队友出生在车旁（城堡/超市/疯人院：左下大车里；超市车更远）
       carX = game.theme.mech==="carwall" ? (game.map==="market" ? 80 : 120) : W/2;
@@ -950,38 +1035,7 @@
       }
       gates={ main:{openT:0}, side:{openT:0}, sewer:{openT:0} };
       game.cartPush=false; game.cart=null; game.gateChan=null; game.ridingCart=null; game.cartMode=false; game.inSewer=false;
-
-      let empties=[];
-      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
-        if (grid[r][c]===CELL.EMPTY && !(r===sr&&c===sc) && reach[r][c]) empties.push({r,c});   // 只放可达格，避免惊魂币刷在围墙里
-      shuffle(empties);
-
-      // 宝箱：按地图×难度数量，均匀散布在可达空地上，品质随机（稀有55% / 典藏30% / 至臻15%）
-      chests=[];
-      const nChest = chestCountFor();
-      const step = Math.max(1, Math.floor(empties.length/(nChest+1)));
-      let ei=0;
-      for (let i=0;i<nChest && ei<empties.length;i++){
-        const e=empties[Math.min(ei, empties.length-1)]; ei+=step;
-        const p=tileCenter(e.r,e.c);
-        const qr=Math.random();
-        chests.push({ x:p.x, y:p.y, qual: qr<0.55?"rare":(qr<0.85?"classic":"ultimate"), opened:false, carried:null });
-      }
-
-      monsters=[];   // 进入大门后才刷小幽灵
-
-      coins=[]; const gCount=Math.min(14,(empties.length/2)|0);
-      for (let k=0;k<gCount && ei<empties.length;k++){
-        const e=empties[ei++]; const p=tileCenter(e.r,e.c);
-        coins.push({ x:p.x, y:p.y, r:8, taken:false, ph:Math.random()*6 });
-      }
-      // 地上宝物：随处可见（常见70% / 稀有30%），捡起进宝物清单
-      groundT=[]; const gTCount=Math.min(16, empties.length);
-      for (let k=0;k<gTCount && ei<empties.length;k++){
-        const e=empties[ei++]; const p=tileCenter(e.r,e.c);
-        const it=rollGroundTreasure();
-        groundT.push({ x:p.x, y:p.y, r:9, taken:false, ph:Math.random()*6, name:it.name, value:it.value, color:it.color });
-      }
+      game.carryHajime=false; game.hajimeTarget=null;
 
       floaters=[];
       lights=[];
@@ -1048,7 +1102,9 @@
   function nextSpawnInterval(){                 // 刷怪间隔随时间缩短：8s → 最低 3.5s
     return Math.max(3.5, 8 - game.time*0.012);
   }
-  function spawnWaveMonster(){
+  function spawnWaveMonster(f){   // f：楼层（古堡按层刷，单层地图恒 1）
+    f = f || game.floor;
+    const list = game.map==="castle" ? monstersByFloor[f-1] : monsters;
     let empties=[];
     for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
       if (grid[r][c]===CELL.EMPTY) empties.push({r,c});
@@ -1063,13 +1119,13 @@
         if (game.map!=="asylum") mtype = roll<0.55?"ghost":(roll<0.70?"puppet":(roll<0.85?"cat":"hajime"));
         else mtype = roll<0.60?"ghost":(roll<0.80?"cat":"puppet");
         const isPuppet=mtype==="puppet", isHajime=mtype==="hajime";
-        monsters.push({ type: mtype,
+        list.push({ type: mtype,
                         x:p.x, y:p.y, r: isPuppet?16+Math.random()*3 : (isHajime?14+Math.random()*4 : 13+Math.random()*5),
                         angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
-                        state:"chase", timer:0, hp:isHajime?3:2,
+                        state:"chase", timer:0, hp:isHajime?Infinity:2,
                         hue: isPuppet?285+Math.random()*25 : 200+Math.random()*80,
                         wanderT:0, spawnFx:0.7, face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0,
-                        visibleT:0, stealthT:0 });
+                        visibleT:0, stealthT:0, meowT:0, wobT:0 });
         const nm = mtype==="cat"?"偷偷猫":(mtype==="puppet"?"傀儡蛋":(mtype==="hajime"?"哈基米":"小幽灵"));
         addFloat(p.x, p.y-22, nm+"出现",
                  mtype==="cat"||mtype==="puppet"?"#d9a6ff":(mtype==="hajime"?"#ffb26a":"#9ecbff"));
@@ -1087,7 +1143,85 @@
     game.huntStarted=true;
     for (const c of carts) releaseCart(c);   // 购物车不能进超市
     game.spawnT=6;                           // 进图后 6 秒安全期，然后开始刷怪
-    addFloat(player.x, player.y-26, "寻宝开始！", "#ffd76a");
+    if (game.map==="castle"){
+      // 古堡落层：主门进 → 随机 1F/2F；侧门进 → 固定 3F（按玩家当前 x 判断走了哪个缺口）
+      const mainX=GATE_COL*TILE+TILE/2, sideX=(COLS-1)*TILE+TILE/2;
+      const fromSide = Math.abs(player.x-sideX) < Math.abs(player.x-mainX);
+      enterFloor(fromSide ? 3 : (Math.random()<0.5?1:2));
+    } else {
+      addFloat(player.x, player.y-26, "寻宝开始！", "#ffd76a");
+    }
+  }
+
+  function enterFloor(f){   // 传送到古堡 f 楼入口（队友一起跟随）
+    game.floor=f;
+    grid=gridByFloor[f-1]; chests=chestsByFloor[f-1]; coins=coinsByFloor[f-1];
+    groundT=groundTByFloor[f-1]; monsters=monstersByFloor[f-1];
+    const p = f===1 ? tileCenter(GATE_ROW-1, GATE_COL) : tileCenter(STAIR_B.r+1, STAIR_B.c);
+    player.x=p.x; player.y=p.y; player.invuln=1.2; player.jumpT=0;
+    for (const b of bots){ if (!b.dead){ b.x=p.x+(Math.random()-0.5)*44; b.y=p.y+24; b.riding=null; b.cart=null; } }
+    game.hajimeTarget=null;
+    addFloat(p.x, p.y-30, "进入古堡 "+f+" 楼！", "#ffd76a");
+  }
+
+  function switchFloor(nf){   // 楼梯换层（E 键）：玩家原地换层 + 队友跟随
+    const up = nf>game.floor;
+    if (game.cartPush) releaseCart(game.cart);
+    game.healChan=null; game.reviveChan=null; game.gateChan=null;
+    if (game.carryHajime){                          // 抱着的哈基米一起上楼
+      const h = monsters.find(m=>m.type==="hajime");
+      if (h){ const idx=monsters.indexOf(h); if (idx>=0) monsters.splice(idx,1); h.x=player.x+26; h.y=player.y; monstersByFloor[nf-1].push(h); }
+    }
+    game.floor=nf;
+    grid=gridByFloor[nf-1]; chests=chestsByFloor[nf-1]; coins=coinsByFloor[nf-1];
+    groundT=groundTByFloor[nf-1]; monsters=monstersByFloor[nf-1];
+    fires=[]; waves=[]; drops=[];   // 换层清掉本层瞬时效果与掉落（留在旧层）
+    for (const b of bots){ if (!b.dead){ b.x=player.x+(Math.random()-0.5)*30; b.y=player.y+26; b.riding=null; b.cart=null; } }
+    game.hajimeTarget=null;
+    addFloat(player.x, player.y-30, up?("上到 "+nf+" 楼！"):("下到 "+nf+" 楼！"), "#9ecbff");
+  }
+
+  function stairInteract(){   // 古堡楼梯口：站在口内按 E 换层
+    if (game.map!=="castle" || !game.huntStarted) return false;
+    for (const s of stairsFor(game.floor)){
+      const p=tileCenter(s.r,s.c);
+      if (Math.hypot(player.x-p.x, player.y-p.y) < TILE*0.62){
+        let nf=null;
+        if (game.floor===1) nf=2;
+        else if (game.floor===2) nf = (s===STAIR_A ? 1 : 3);
+        else nf=2;
+        switchFloor(nf);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function findHajime(){ for (const m of monsters) if (m.type==="hajime") return m; return null; }
+
+  function findHajimeTarget(){   // 带路目标：本层最近未开宝箱，其次未拾取地上宝物
+    let best=null, bd=1e9;
+    for (const c of chests){ if (!c.opened && !c.carried){ const d=Math.hypot(c.x-player.x,c.y-player.y); if (d<bd){bd=d;best={x:c.x,y:c.y,kind:"chest",ref:c};} } }
+    if (best) return best;
+    for (const g of groundT){ if (!g.taken){ const d=Math.hypot(g.x-player.x,g.y-player.y); if (d<bd){bd=d;best={x:g.x,y:g.y,kind:"ground",ref:g};} } }
+    return best;
+  }
+
+  function hajimeInteract(){   // E 键：抱起 / 放下哈基米
+    if (game.carryHajime){
+      game.carryHajime=false; game.hajimeTarget=null;
+      const h=findHajime();
+      if (h){ h.x=player.x+30; h.y=player.y; }
+      addFloat(player.x, player.y-26, "放下哈基米", "#9ecbff");
+      return true;
+    }
+    const h=findHajime();
+    if (h && Math.hypot(h.x-player.x,h.y-player.y)<56){
+      game.carryHajime=true; game.hajimeTarget=null;
+      addFloat(player.x, player.y-26, "抱起哈基米！它会带你找宝物", "#ffd76a");
+      return true;
+    }
+    return false;
   }
 
   // ===== 流程 =====
@@ -1340,6 +1474,7 @@
         bankCoins();
         for (let i=0;i<invSlots.length;i++) invSlots[i]=null;   // 被打死：包里东西全掉光
         equipped=null; renderInv();
+        game.carryHajime=false; game.hajimeTarget=null;         // 阵亡：放下哈基米
         game.state=STATE.DEAD;                                   // 阵亡观战：等人机复活或跳过
         game.spectate=0; game.potReviveT=0;
         showSpectate();
@@ -1385,12 +1520,22 @@
         }
       }
     }
-    // 无限刷怪：间隔随时间缩短（8s→3.5s），同屏上限 25 只
+    // 无限刷怪：间隔随时间缩短（8s→3.5s），同屏上限 25 只；古堡每层独立刷怪
     if (game.huntStarted && game.state===STATE.PLAYING){
-      game.spawnT-=dt;
-      if (game.spawnT<=0){
-        if (monsters.length<MONSTER_CAP) spawnWaveMonster();
-        game.spawnT=nextSpawnInterval();
+      if (game.map==="castle"){
+        for (let f=1;f<=3;f++){
+          spawnTByFloor[f-1]-=dt;
+          if (spawnTByFloor[f-1]<=0){
+            if (monstersByFloor[f-1].length<MONSTER_CAP) spawnWaveMonster(f);
+            spawnTByFloor[f-1]=nextSpawnInterval();
+          }
+        }
+      } else {
+        game.spawnT-=dt;
+        if (game.spawnT<=0){
+          if (monsters.length<MONSTER_CAP) spawnWaveMonster(1);
+          game.spawnT=nextSpawnInterval();
+        }
       }
     }
     // 超市购物车触发：玩家推车或坐上人机的车 → 全员开始推车；靠近人机的车自动坐上
@@ -1626,31 +1771,49 @@
         if (m.spawnFx>0) m.spawnFx-=dt;
         if (m.stepFx>0) m.stepFx-=dt;
       } else if (m.type==="hajime"){
-        // 哈基米：追近 → 停下"哈基米～"嚎叫 1.8s（预警圈）→ 音波环扩散（15 伤+1.5s 减速，跳跃/高台可躲）→ 僵直 2.5s
-        if (m.state==="howl"){
-          if (nd>210){ m.state="chase"; }                  // 目标跑太远：收起嚎叫
-          else {
-            m.timer-=dt;
-            if (m.timer<=0){
-              waves.push({ x:m.x, y:m.y, r:m.r+8, maxR:215, speed:300, dmg:15, slow:1.5, hit:new Set() });
-              m.state="rest"; m.timer=2.5;
+        // 哈基米：友好生物，无限血、不攻击。闲逛/靠近蹭人；被抱起时带路找宝物（本层最近宝箱/地上宝物）
+        if (game.carryHajime){
+          if (!game.hajimeTarget) game.hajimeTarget = findHajimeTarget();
+          const tgt = game.hajimeTarget;
+          if (tgt){
+            const d2=Math.hypot(tgt.x-m.x, tgt.y-m.y);
+            const dp=Math.hypot(player.x-m.x, player.y-m.y);
+            if (dp>150){                                 // 玩家没跟上：停下回头等
+              m.wt=0; m.face = player.x>=m.x ? 1 : -1;
+              m.meowT=(m.meowT||0)-dt;
+              if (m.meowT<=0){ m.meowT=1.6; addFloat(m.x,m.y-24,"喵！跟紧我", "#ffd76a"); }
+            } else if (d2>52){
+              const spd=cfg.chase*1.0;
+              const nx=m.x+(tgt.x-m.x)/d2*spd*dt, ny=m.y+(tgt.y-m.y)/d2*spd*dt;
+              const okX=!hitsWall(nx, m.y, m.r, true), okY=!hitsWall(m.x, ny, m.r, true);
+              if (okX) m.x=nx; if (okY) m.y=ny;
+              m.face = tgt.x>=m.x ? 1 : -1;
+            } else {
+              m.meowT=(m.meowT||0)-dt;                   // 到宝物旁：喵叫提示
+              if (m.meowT<=0){ m.meowT=1.2; addFloat(m.x,m.y-24,"喵！宝物在这里！", "#ffd76a"); }
+              if ((tgt.kind==="chest" && (tgt.ref.opened || tgt.ref.carried)) || (tgt.kind==="ground" && tgt.ref.taken)) game.hajimeTarget=null;
             }
+          } else {
+            m.wt-=dt;                                    // 本层没宝物了：闲逛
+            if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=1+Math.random()*2; }
+            const nx=m.x+Math.cos(m.angle)*cfg.wander*0.8*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*0.8*dt;
+            if (!hitsWall(nx, m.y, m.r, true)) m.x=nx;
+            if (!hitsWall(m.x, ny, m.r, true)) m.y=ny;
           }
-        } else if (m.state==="rest"){
-          m.timer-=dt;
-          if (m.timer<=0) m.state="chase";
         } else {
-          if (nd<110){ m.state="howl"; m.timer=1.8; }
-          else if (nd<cfg.detect && nd>0.1){
-            const spd=cfg.chase*1.1;
-            const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
+          const dn=Math.hypot(ne.x-m.x, ne.y-m.y);
+          if (dn<90 && dn>0.1){                           // 玩家靠近：凑过去蹭（不伤害）
+            const spd=cfg.chase*0.7;
+            const nx=m.x+(ne.x-m.x)/dn*spd*dt, ny=m.y+(ne.y-m.y)/dn*spd*dt;
             const okX=!hitsWall(nx, m.y, m.r, true), okY=!hitsWall(m.x, ny, m.r, true);
             if (okX) m.x=nx; if (okY) m.y=ny;
             m.face = ne.x>=m.x ? 1 : -1;
-          } else {
+            m.wobT=(m.wobT||0)-dt;
+            if (m.wobT<=0){ m.wobT=2+Math.random()*2; addFloat(m.x,m.y-22, Math.random()<0.5?"哈基米～":"喵～", "#ffd76a"); }
+          } else {                                        // 闲逛
             m.wt-=dt;
-            if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=0.8+Math.random()*1.4; }
-            const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
+            if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=1+Math.random()*2; }
+            const nx=m.x+Math.cos(m.angle)*cfg.wander*0.8*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*0.8*dt;
             if (!hitsWall(nx, m.y, m.r, true)) m.x=nx;
             if (!hitsWall(m.x, ny, m.r, true)) m.y=ny;
           }
@@ -1694,6 +1857,7 @@
       m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
       if (m.flash>0) m.flash-=dt;
       if (m.spawnFx>0) m.spawnFx-=dt;
+      if (m.type==="hajime") continue;   // 哈基米友好怪：不可撞飞、不可吃
       // 近战撞到玩家：滚动可撞飞、毛哆哆张嘴可吃；傀儡蛋的近战伤害走"蓄力咬"（40血）
       if (Math.hypot(player.x-m.x,player.y-m.y)<player.r+m.r){
         if (game.char==="huang" && game.skillT>0){
@@ -1783,6 +1947,7 @@
       th.x+=th.vx*dt; th.y+=th.vy*dt; th.t+=dt;
       let done = th.t>th.life || hitsWall(th.x,th.y,4);
       for (const m of monsters){
+        if (m.type==="hajime") continue;   // 哈基米友好怪：鱼叉打不中
         if (Math.hypot(m.x-th.x,m.y-th.y)<m.r+6){
           m.hp--; m.flash=0.3;
           addFloat(m.x,m.y-18,"命中 -1","#ffd76a");
@@ -1967,8 +2132,9 @@
         }
       }
       if (b.atkCd<=0){
-        let target=null, t2=80;                     // 人机鱼叉：优先打近处小幽灵
+        let target=null, t2=80;                     // 人机鱼叉：优先打近处小幽灵（不打哈基米）
         for (const m of monsters){
+          if (m.type==="hajime") continue;
           const d=Math.hypot(m.x-b.x,m.y-b.y);
           if (d<t2){ t2=d; target=m; }
         }
@@ -2018,6 +2184,7 @@
       }
       // 与怪物碰撞：滚动撞飞 / 张嘴就吃（傀儡蛋的近战伤害走"蓄力咬"，贴脸不再自动扣血）
       for (const m of monsters){
+        if (m.type==="hajime") continue;   // 哈基米友好怪：人机也打不了
         if (Math.hypot(m.x-b.x,m.y-b.y)<b.r+m.r){
           if (b.roll>0){
             const ang=Math.atan2(m.y-b.y,m.x-b.x);
@@ -2112,6 +2279,7 @@
     let hitAny=false;
     for (let i=monsters.length-1;i>=0;i--){
       const m=monsters[i];
+      if (m.type==="hajime") continue;   // 哈基米友好怪：鱼叉挥砍无效
       if (Math.hypot(m.x-player.x,m.y-player.y) < player.r+m.r+46){   // 近战范围
         hitAny=true;
         m.hp--; m.flash=0.3;
@@ -2148,11 +2316,17 @@
     inv.coins-=45000; saveInv();
     // 清理进行中的状态
     game.healChan=null; game.reviveChan=null; game.gateChan=null;
+    game.carryHajime=false; game.hajimeTarget=null;   // 放下哈基米（留在楼内）
     if (game.ridingCart) releaseCart(game.ridingCart);
     if (game.cartPush) releaseCart(game.cart);
     game.inSewer=false;
     // 传送回车里（车周围，安全区）
     player.x=carX; player.y=carY; player.invuln=1.2; player.jumpT=0;
+    if (game.map==="castle" && game.floor!==1){   // 楼层切回 1F，重新进门正常进 1 楼
+      game.floor=1;
+      grid=gridByFloor[0]; chests=chestsByFloor[0]; coins=coinsByFloor[0];
+      groundT=groundTByFloor[0]; monsters=monstersByFloor[0];
+    }
     addFloat(carX, carY-30, "地窖徽章传送回车里！", "#ffd76a");
     addFloat(player.x, player.y-20, "维修 -45000", "#ff8888");
     updateHud(); updateEvacHud();
@@ -2373,30 +2547,10 @@
     ctx.restore();
   }
 
-  function drawHajime(m){   // 哈基米：橘色音波猫（追近 →"哈基米～"嚎叫 → 音波环 → 僵直）
+  function drawHajime(m){   // 哈基米：友好橘猫（无限血，闲逛/蹭人；被抱起时带路找宝物）
     ctx.save(); ctx.translate(m.x, m.y);
     const t=performance.now()/1000;
-    const howl = m.state==="howl", rest = m.state==="rest";
-    if (m.flash>0){                                     // 被击闪光
-      const p=1-m.flash/0.35;
-      ctx.strokeStyle=`rgba(255,224,102,${(1-p)*0.9})`;
-      ctx.lineWidth=3;
-      ctx.beginPath(); ctx.arc(0,0,m.r+p*46,0,Math.PI*2); ctx.stroke();
-    }
-    if (howl){                                          // 嚎叫：预警圈收缩 + 头顶"哈基米！"音符
-      const pr=1-m.timer/1.8;
-      ctx.strokeStyle=`rgba(255,90,60,${0.35+0.5*pr})`;
-      ctx.lineWidth=3;
-      ctx.beginPath(); ctx.arc(0,0,m.r+20-16*pr,0,Math.PI*2); ctx.stroke();
-      ctx.strokeStyle=`rgba(255,150,90,${0.25+0.4*pr})`;
-      ctx.lineWidth=2;
-      ctx.beginPath(); ctx.arc(0,0,m.r+30-24*pr,0,Math.PI*2); ctx.stroke();
-      ctx.fillStyle="#ffb26a"; ctx.font="bold 13px sans-serif"; ctx.textAlign="center";
-      ctx.fillText("哈基米！", 0, -m.r-26);
-      ctx.font="bold 11px sans-serif";
-      ctx.fillText("♪", -m.r-16, -m.r-6+Math.sin(t*8)*2);
-      ctx.fillText("♪",  m.r+16, -m.r-10+Math.sin(t*8+1)*2);
-    }
+    const carry = game.carryHajime;   // 带路模式：兴奋 + 头顶 ✨
     if (m.spawnFx>0){                                   // 刷怪出生扩散圈
       const p=1-m.spawnFx/0.7;
       ctx.strokeStyle=`rgba(255,150,200,${(1-p)*0.85})`;
@@ -2404,19 +2558,20 @@
       ctx.beginPath(); ctx.arc(0,0,m.r+p*34,0,Math.PI*2); ctx.stroke();
     }
     const glow=ctx.createRadialGradient(0,0,2,0,0,m.r+16);
-    glow.addColorStop(0,"hsla(28,90%,62%,.45)"); glow.addColorStop(1,"hsla(28,90%,62%,0)");
+    glow.addColorStop(0, carry ? "hsla(45,100%,70%,.5)" : "hsla(28,90%,62%,.45)");
+    glow.addColorStop(1, carry ? "hsla(45,100%,70%,0)" : "hsla(28,90%,62%,0)");
     ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,0,m.r+16,0,Math.PI*2); ctx.fill();
-    // 尾巴（摆动）
+    // 尾巴（带路时兴奋快摆）
+    const wag = carry ? 9 : 5;
     ctx.strokeStyle="#d97a2a"; ctx.lineWidth=3;
     ctx.beginPath();
     ctx.moveTo(m.r*0.5, 4);
-    ctx.quadraticCurveTo(m.r*1.05, 2+Math.sin(t*5)*5, m.r*0.9, 9+Math.sin(t*5+1)*7);
+    ctx.quadraticCurveTo(m.r*1.05, 2+Math.sin(t*wag)*5, m.r*0.9, 9+Math.sin(t*wag+1)*7);
     ctx.stroke();
-    // 耳朵（howl 时竖得更直）
-    const earH = howl ? 1.25 : 1.0;
+    // 耳朵
     ctx.fillStyle="#e88a3a";
-    ctx.beginPath(); ctx.moveTo(-m.r*0.78,-m.r*0.38); ctx.lineTo(-m.r*0.32,-m.r*earH); ctx.lineTo(-m.r*0.05,-m.r*0.5); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo( m.r*0.78,-m.r*0.38); ctx.lineTo( m.r*0.32,-m.r*earH); ctx.lineTo( m.r*0.05,-m.r*0.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-m.r*0.78,-m.r*0.38); ctx.lineTo(-m.r*0.32,-m.r); ctx.lineTo(-m.r*0.05,-m.r*0.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo( m.r*0.78,-m.r*0.38); ctx.lineTo( m.r*0.32,-m.r); ctx.lineTo( m.r*0.05,-m.r*0.5); ctx.closePath(); ctx.fill();
     // 头 + 身（橘色圆猫）
     ctx.fillStyle="#f09a4a";
     ctx.beginPath(); ctx.arc(0,0,m.r,0,Math.PI*2); ctx.fill();
@@ -2428,28 +2583,27 @@
     ctx.moveTo(-4,-m.r*0.75); ctx.lineTo(4,-m.r*0.75);
     ctx.moveTo(-5,-m.r*0.55); ctx.lineTo(5,-m.r*0.55);
     ctx.stroke();
-    // 眼睛：howl 时怒视变红 + 皱眉；rest 时眯眼
-    if (howl){
-      ctx.fillStyle="#ff4a4a";
-      ctx.beginPath(); ctx.arc(-5,-4,3.2,0,Math.PI*2); ctx.arc(5,-4,3.2,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle="#c25a2a"; ctx.lineWidth=1.6;
-      ctx.beginPath(); ctx.moveTo(-9,-9); ctx.lineTo(-2,-7); ctx.moveTo(9,-9); ctx.lineTo(2,-7); ctx.stroke();   // 皱眉
-    } else if (rest){
-      ctx.strokeStyle="#8a4a1a"; ctx.lineWidth=1.6;
-      ctx.beginPath(); ctx.moveTo(-8,-3); ctx.lineTo(-2,-4); ctx.moveTo(8,-3); ctx.lineTo(2,-4); ctx.stroke();   // 眯眼
-    } else {
-      ctx.fillStyle="#ffd24a";
-      ctx.beginPath(); ctx.arc(-5,-4,2.8,0,Math.PI*2); ctx.arc(5,-4,2.8,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle="#3a1a08";
-      ctx.beginPath(); ctx.arc(-5,-4,1.4,0,Math.PI*2); ctx.arc(5,-4,1.4,0,Math.PI*2); ctx.fill();
-    }
-    // 嘴：howl 张开大嘴 / 平时小嘴
-    if (howl){
-      ctx.fillStyle="#7a2a0a";
-      ctx.beginPath(); ctx.arc(0,8,4.5,0,Math.PI); ctx.fill();          // 张开的嘴（上半圆）
-      ctx.fillStyle="#ff6a6a"; ctx.fillRect(-2,6,4,2);                  // 舌头
-    } else {
-      ctx.fillStyle="#7a2a0a"; ctx.beginPath(); ctx.arc(0,5,1.8,0,Math.PI*2); ctx.fill();
+    // 眼睛：友善大眼（带路时亮晶晶）
+    ctx.fillStyle = carry ? "#8ae2ff" : "#ffd24a";
+    ctx.beginPath(); ctx.arc(-5,-4,2.8,0,Math.PI*2); ctx.arc(5,-4,2.8,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#3a1a08";
+    ctx.beginPath(); ctx.arc(-5,-4,1.4,0,Math.PI*2); ctx.arc(5,-4,1.4,0,Math.PI*2); ctx.fill();
+    if (carry){ ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(-6,-5.5,0.7,0,Math.PI*2); ctx.arc(4,-5.5,0.7,0,Math.PI*2); ctx.fill(); }
+    // 嘴：微笑
+    ctx.strokeStyle="#7a2a0a"; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.arc(0,4,3,0.15,Math.PI-0.15); ctx.stroke();
+    // 腮红（友好）
+    ctx.fillStyle="rgba(255,120,120,.4)";
+    ctx.beginPath(); ctx.arc(-m.r*0.62,2,2.4,0,Math.PI*2); ctx.arc(m.r*0.62,2,2.4,0,Math.PI*2); ctx.fill();
+    // 带路：头顶 ✨ 星光闪烁
+    if (carry){
+      const tw=0.6+0.4*Math.sin(t*6);
+      ctx.fillStyle=`rgba(255,240,150,${tw})`;
+      ctx.font="bold 12px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("✨", 0, -m.r-10);
+      ctx.strokeStyle=`rgba(255,215,106,${0.35+0.3*Math.sin(t*5)})`;
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(0,0,m.r+9,0,Math.PI*2); ctx.stroke();
     }
     ctx.restore();
   }
@@ -2586,6 +2740,28 @@
       for (let i=0;i<4;i++) ctx.fillRect(sx-14, H+8+i*20, 50, 7);
       ctx.fillStyle="#c9b878"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
       ctx.fillText("侧门→", sx+10, H+4);
+    }
+    // 古堡楼层：楼梯口（发光 + 方向）+ 当前楼层 HUD
+    if (game.map==="castle"){
+      if (game.huntStarted){
+        const t2=performance.now()/1000;
+        for (const s of stairsFor(game.floor)){
+          const sp=tileCenter(s.r,s.c);
+          const up = (game.floor===1) || (game.floor===2 && s===STAIR_B);
+          ctx.strokeStyle=`rgba(255,215,106,${0.4+0.25*Math.sin(t2*4)})`;
+          ctx.lineWidth=2.5;
+          ctx.beginPath(); ctx.arc(sp.x, sp.y, 20, 0, Math.PI*2); ctx.stroke();
+          ctx.fillStyle="#e8d48a"; ctx.font="bold 13px sans-serif"; ctx.textAlign="center";
+          ctx.fillText(up?"▲":"▼", sp.x, sp.y+5);
+          if (Math.hypot(player.x-sp.x, player.y-sp.y)<TILE*0.9){
+            ctx.fillStyle="#ffd76a"; ctx.font="bold 11px sans-serif";
+            ctx.fillText(up?"按 E 上楼":"按 E 下楼", sp.x, sp.y-24);
+          }
+          ctx.textAlign="left";
+        }
+      }
+      ctx.fillStyle="rgba(255,215,106,.9)"; ctx.font="bold 15px sans-serif"; ctx.textAlign="left";
+      ctx.fillText("古堡 "+game.floor+"F", 10, 24);
     }
     // 疯人院前厅：三门标识（左=爬楼梯上去 / 中=正门直走 / 右=下地下室楼梯）
     if (game.theme.frontHall){
