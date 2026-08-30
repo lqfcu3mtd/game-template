@@ -1,0 +1,2193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>蛋仔惊魂寻宝队 · 小游戏模板</title>
+<style>
+  :root { --bg:#15131f; --panel:#221d33; --text:#ece8f5; --accent:#ff7ac6; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--text);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100vh; padding:20px;
+  }
+  h1 { font-size:22px; margin-bottom:4px; color:var(--accent); }
+  .sub { color:#a99fc4; font-size:13px; margin-bottom:16px; }
+  .game-wrap { background:var(--panel); border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); padding:16px; }
+  .hud { display:flex; justify-content:space-between; margin-bottom:12px; font-size:14px; font-weight:600; }
+  .hud b { color:var(--accent); font-size:16px; }
+  .hud .hp { color:#ff5a7a; }
+  .stage { position:relative; }
+  canvas { display:block; border-radius:10px; background:#0a0810; }
+  .overlay {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(10,8,16,.82); border-radius:10px; transition:opacity .2s;
+  }
+  .overlay.hidden { opacity:0; pointer-events:none; }
+  .panel { text-align:center; padding:22px; max-width:86%; }
+  .panel h2 { font-size:25px; margin-bottom:8px; color:var(--accent); }
+  .panel p { font-size:14px; opacity:.88; margin-bottom:14px; line-height:1.7; }
+  .panel .hint { font-size:12px; opacity:.55; margin-top:12px; margin-bottom:0; }
+  .pick { margin:6px 0 12px; }
+  .pick-label { font-size:13px; color:#a99fc4; margin-bottom:6px; }
+  .pick-row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .pick-btn {
+    border:2px solid #4a4366; background:#2c2740; color:#cfc7e6;
+    font-size:13px; font-weight:600; padding:7px 14px; border-radius:9px; cursor:pointer;
+    transition:all .15s;
+  }
+  .pick-btn:hover { border-color:var(--accent); }
+  .pick-btn.active { background:var(--accent); color:#1a0f24; border-color:var(--accent); }
+  .mate-label { font-size:11px; color:#a99fc4; width:40px; text-align:right; align-self:center; }
+  .pick-row.off { opacity:.35; pointer-events:none; }
+  .pick-skill { font-size:12px; color:#a99fc4; margin-top:6px; }
+  button.start {
+    border:none; cursor:pointer; background:var(--accent); color:#1a0f24;
+    font-size:16px; font-weight:700; padding:11px 30px; border-radius:10px;
+    transition:transform .1s, background .2s; margin-top:4px;
+  }
+  button.start:hover { filter:brightness(1.1); }
+  button.start:active { transform:scale(.96); }
+  .btn-row { display:flex; gap:10px; justify-content:center; margin-top:4px; }
+  .inv { margin-top:12px; }
+  .inv-bar { display:flex; align-items:center; gap:10px; justify-content:center; }
+  .inv-hot, .inv-bag { display:flex; gap:6px; }
+  .inv-bag { justify-content:center; margin-top:8px; }
+  .inv-label { font-size:11px; color:#a99fc4; margin-right:8px; align-self:center; }
+  .inv-slot { width:42px; height:42px; border:2px solid #3a3358; border-radius:8px; background:#2c2740; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:border-color .15s; }
+  .inv-slot:hover { border-color:var(--accent); }
+  .inv-slot.empty { opacity:.4; }
+  .inv-slot .slot-tag { font-size:10px; color:#cfc7e6; }
+  .inv-slot.equipped { border-color:var(--accent); box-shadow:0 0 8px rgba(255,122,198,.55); }
+  .inv-ghost { position:fixed; width:42px; height:42px; border:2px solid var(--accent); border-radius:8px; background:#2c2740; display:none; align-items:center; justify-content:center; pointer-events:none; z-index:60; opacity:.85; }
+  .inv-btn { border:2px solid #3a3358; background:#2c2740; color:#cfc7e6; font-size:13px; font-weight:600; padding:8px 12px; border-radius:9px; cursor:pointer; transition:all .15s; }
+  .inv-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .spectate { position:absolute; top:8px; left:8px; right:8px; z-index:30; pointer-events:none; }
+  .spec-x { position:absolute; top:0; left:0; }
+  .spec-btn { pointer-events:auto; border:none; cursor:pointer; background:rgba(35,30,60,.9); color:#ffd76a; font-size:16px; font-weight:700; width:34px; height:34px; border-radius:9px; line-height:1; transition:background .15s; }
+  .spec-btn:hover { background:var(--accent); color:#1a0f24; }
+  .spec-bar { position:absolute; top:0; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px; }
+  .spec-bar span { font-size:13px; color:#ffd76a; background:rgba(35,30,60,.85); padding:6px 12px; border-radius:9px; white-space:nowrap; }
+  .spec-hint { position:absolute; top:44px; left:50%; transform:translateX(-50%); font-size:12px; color:#ff8fa8; background:rgba(35,30,60,.85); padding:5px 12px; border-radius:9px; white-space:nowrap; }
+  .shop-mask { position:fixed; inset:0; background:rgba(10,8,16,.78); display:flex; align-items:center; justify-content:center; z-index:50; }
+  .shop { background:var(--panel); border-radius:16px; padding:22px 26px; width:320px; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.6); }
+  .shop h3 { color:var(--accent); margin-bottom:6px; font-size:20px; }
+  .shop-wallet { font-size:14px; margin-bottom:14px; color:#a99fc4; }
+  .shop-wallet b { color:var(--accent); font-size:18px; }
+  .shop-item { border:1px solid #3a3358; border-radius:12px; padding:12px; margin-bottom:12px; }
+  .shop-item b { color:var(--accent); }
+  .shop-item .item-price { color:#ffd76a; font-weight:700; margin:6px 0; }
+  .shop-item .item-owned { font-size:12px; color:#a99fc4; margin-bottom:8px; }
+  .shop-msg { font-size:12px; min-height:16px; margin-bottom:10px; color:#ffd76a; }
+</style>
+</head>
+<body>
+  <h1>蛋仔惊魂寻宝队</h1>
+  <div class="sub">选难度 · 选地图 · 带着蛋仔去寻宝</div>
+
+  <div class="game-wrap">
+    <div class="hud">
+      <span>角色 <b id="charName">蛋小黄</b></span>
+      <span>队友 <b id="mates">3/3</b></span>
+      <span class="hp">血量 <b id="hp">100</b></span>
+      <span>宝石 <b id="gems">0</b></span>
+      <span>技能 <b id="skill">疾跑 ·就绪</b></span>
+      <span>时间 <b id="time">0</b>s</span>
+    </div>
+    <div class="stage">
+      <canvas id="game" width="660" height="484"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="panel">
+          <h2 id="ov-title">蛋仔惊魂寻宝队</h2>
+          <p id="ov-text">选择难度与地图，开始惊魂寻宝！<br>躲避幽灵、捡宝石，找到发光宝箱就赢。</p>
+          <div id="picks">
+            <div class="pick">
+              <div class="pick-label">难度</div>
+              <div class="pick-row" id="diff-row">
+                <button class="pick-btn" data-diff="easy">简单</button>
+                <button class="pick-btn active" data-diff="normal">普通</button>
+                <button class="pick-btn" data-diff="hard">困难</button>
+              </div>
+            </div>
+            <div class="pick">
+              <div class="pick-label">地图</div>
+              <div class="pick-row" id="map-row">
+                <button class="pick-btn active" data-map="castle">温斯洛古堡</button>
+                <button class="pick-btn" data-map="market">好蛋来超市</button>
+                <button class="pick-btn" data-map="asylum">怪蛋疯人院</button>
+              </div>
+            </div>
+            <div class="pick">
+              <div class="pick-label">角色</div>
+              <div class="pick-row" id="char-row">
+                <button class="pick-btn active" data-char="huang">蛋小黄</button>
+                <button class="pick-btn" data-char="puff">泡芙</button>
+                <button class="pick-btn" data-char="duoduo">毛哆哆</button>
+                <button class="pick-btn" data-char="lv">蛋小绿</button>
+              </div>
+              <div class="pick-skill" id="charSkill"></div>
+            </div>
+            <div class="pick">
+              <div class="pick-label">队友数量</div>
+              <div class="pick-row" id="matecount-row">
+                <button class="pick-btn" data-mc="0">0个队友</button>
+                <button class="pick-btn" data-mc="1">1个队友</button>
+                <button class="pick-btn" data-mc="2">2个队友</button>
+                <button class="pick-btn active" data-mc="3">3个队友</button>
+              </div>
+            </div>
+            <div class="pick">
+              <div class="pick-label">队友角色（可重复选择）</div>
+              <div class="pick-row" id="mate-row-0"><span class="mate-label">队友1</span>
+                <button class="pick-btn" data-mi="0" data-mchar="huang">蛋小黄</button>
+                <button class="pick-btn" data-mi="0" data-mchar="puff">泡芙</button>
+                <button class="pick-btn" data-mi="0" data-mchar="duoduo">毛哆哆</button>
+                <button class="pick-btn" data-mi="0" data-mchar="lv">蛋小绿</button>
+              </div>
+              <div class="pick-row" id="mate-row-1"><span class="mate-label">队友2</span>
+                <button class="pick-btn" data-mi="1" data-mchar="huang">蛋小黄</button>
+                <button class="pick-btn" data-mi="1" data-mchar="puff">泡芙</button>
+                <button class="pick-btn" data-mi="1" data-mchar="duoduo">毛哆哆</button>
+                <button class="pick-btn" data-mi="1" data-mchar="lv">蛋小绿</button>
+              </div>
+              <div class="pick-row" id="mate-row-2"><span class="mate-label">队友3</span>
+                <button class="pick-btn" data-mi="2" data-mchar="huang">蛋小黄</button>
+                <button class="pick-btn" data-mi="2" data-mchar="puff">泡芙</button>
+                <button class="pick-btn" data-mi="2" data-mchar="duoduo">毛哆哆</button>
+                <button class="pick-btn" data-mi="2" data-mchar="lv">蛋小绿</button>
+              </div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="start" id="ov-btn">开始冒险</button>
+            <button class="start" id="shopBtn">商城</button>
+          </div>
+          <p class="hint">WASD 移动 · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · E 开门/刷卡/上下购物车 · 点击快捷栏装备 · 空格暂停 · R 换图</p>
+        </div>
+      </div>
+    </div>
+    <!-- 背包：3 快捷栏（常显）+ 3 背包格（点背包按钮展开） -->
+    <div class="inv">
+      <div class="inv-bar">
+        <div class="inv-hot" id="invHot"></div>
+        <button class="inv-btn" id="bagBtn">背包</button>
+      </div>
+      <div class="inv-bag" id="invBag" style="display:none"></div>
+      <div class="inv-bag" id="invPetWrap" style="display:none"><span class="inv-label">宠物背包</span><div id="invPet"></div></div>
+    </div>
+    <!-- 阵亡观战 UI -->
+    <div class="spectate" id="spectate" style="display:none">
+      <button class="spec-btn spec-x" id="specX" title="直接开始下一局">✕</button>
+      <div class="spec-bar">
+        <button class="spec-btn" id="specLeft">◀</button>
+        <span id="specName">观看中</span>
+        <button class="spec-btn" id="specRight">▶</button>
+      </div>
+      <div class="spec-hint">你阵亡了 · 队友正赶来用返魂药水救你，或点 ✕ 开始下一局</div>
+    </div>
+  </div>
+
+  <!-- 商城弹窗 -->
+  <div class="shop-mask" id="shopMask" style="display:none">
+    <div class="shop">
+      <h3>蛋蛋商城</h3>
+      <div class="shop-wallet">总宝石 <b id="wallet">0</b></div>
+      <div class="shop-item">
+        <b>鱼叉</b><br>
+        <span style="font-size:12px;color:#a99fc4">放入背包/快捷栏 · 无限挥砍 · 近战两叉击杀 · 被打死会掉落</span>
+        <div class="item-price">10 宝石 / 把</div>
+        <div class="item-owned">拥有 <b id="harpoonOwned">0</b> 把</div>
+        <button class="start" id="buyHarpoon" style="padding:8px 22px;font-size:14px">购买</button>
+      </div>
+      <div class="shop-item">
+        <b>返魂药水</b><br>
+        <span style="font-size:12px;color:#a99fc4">复活一位阵亡队友：靠近其尸体引导 5 秒，复活后只剩 50 血</span>
+        <div class="item-price">5 宝石 / 瓶</div>
+        <div class="item-owned">拥有 <b id="reviveOwned">0</b> 瓶</div>
+        <button class="start" id="buyRevive" style="padding:8px 22px;font-size:14px">购买</button>
+      </div>
+      <div class="shop-item">
+        <b>低级会员</b><br>
+        <span style="font-size:12px;color:#a99fc4">快捷栏 +1 格（共 7 格）</span>
+        <div class="item-price">20 宝石</div>
+        <div class="item-owned" id="memberBasicOwned"></div>
+        <button class="start" id="buyBasic" style="padding:8px 22px;font-size:14px">购买</button>
+      </div>
+      <div class="shop-item">
+        <b>高级会员</b><br>
+        <span style="font-size:12px;color:#a99fc4">快捷栏 +1、宠物背包 1 格、小狗跟随（共 8 格）</span>
+        <div class="item-price">30 宝石</div>
+        <div class="item-owned" id="memberPremiumOwned"></div>
+        <button class="start" id="buyPremium" style="padding:8px 22px;font-size:14px">购买</button>
+      </div>
+      <div class="shop-msg" id="shopMsg"></div>
+      <button class="start" id="shopClose" style="padding:8px 26px;font-size:14px">返回</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const TILE = 44, COLS = 15, ROWS = 11;
+  const W = COLS * TILE, H = ROWS * TILE;
+  const OUTER = 132, SEWER = 88;                 // 外部停车区 3 行；下水道层 2 行（超市专属）
+  const H_TOT = H + OUTER + SEWER;
+  const SEWER_Y = H + OUTER;                     // 下水道层顶部 y
+  const SEWER_L = 110, SEWER_R = W - 60;         // 下水道走廊左右墙
+  const SEWER_EX = W - 150;                      // 井盖入口 x（外部区右下方）
+  const SEWER_DOOR_X = SEWER_L + 22;             // 下水道门（走廊左端，刷卡进入超市）
+  const GATE_ROW = 10, GATE_COL = 7;         // 大门：地牢底排缺口
+  const CAR_X = W/2, CAR_Y = H + 52;         // 出发的车（默认）
+  let carX = CAR_X, carY = CAR_Y;            // 每局按地图设定（城堡：左下大车）
+  let cart = null;                           // 玩家推的购物车（超市）
+  let carts = [];                            // 超市全部购物车（4 辆）
+  let gates = { main:{openT:0}, side:{openT:0}, sewer:{openT:0} };   // 进门鉴：主门/侧门/下水道门开合计时
+  canvas.width = W; canvas.height = H_TOT;
+
+  // 离屏黑暗层：支持多个光源打洞（点亮技能）
+  const darkCanvas = document.createElement("canvas");
+  darkCanvas.width = W; darkCanvas.height = H_TOT;
+  const dctx = darkCanvas.getContext("2d");
+  function punch(c, x, y, r) {
+    const g = c.createRadialGradient(x, y, r*0.18, x, y, r);
+    g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g; c.fillRect(x-r, y-r, r*2, r*2);
+  }
+
+  const STATE = { MENU: 0, PLAYING: 1, PAUSED: 2, OVER: 3, WIN: 4, DEAD: 5 };
+  const CELL = { EMPTY: 0, WALL: 1, TREASURE: 2 };
+
+  // ===== 难度配置 =====
+  const DIFF = {
+    easy:   { label:"简单", lives:3, monsters:2, puppets:0, chase:80,  detect:150, wander:46 },
+    normal: { label:"普通", lives:3, monsters:3, puppets:1, chase:104, detect:185, wander:52 },
+    hard:   { label:"困难", lives:2, monsters:5, puppets:2, chase:132, detect:235, wander:58 },
+  };
+
+  // ===== 地图主题 =====
+  const MAPS = {
+    castle: { label:"温斯洛古堡", accent:"#ff7ac6", bg:"#0a0810", ground:"#171327",
+              wall:"#2c2740", wallTop:"#3a3358", wallStyle:"block",  floater:"170,150,255",
+              mech:"carwall", sideDoor:true },   // 大车+车门蓝墙；大门常开；右侧楼梯侧门
+    market: { label:"好蛋来超市", accent:"#ffd24a", bg:"#101418", ground:"#1c2630",
+              wall:"#37506a", wallTop:"#4a6f93", wallStyle:"shelf",  floater:"120,200,255",
+              mech:"carwall", sideDoor:true, cart:true },   // 超市：路径远，有购物车加速
+    asylum: { label:"怪蛋疯人院", accent:"#7cfc9b", bg:"#0c120e", ground:"#16201a",
+              wall:"#2f4a36", wallTop:"#3f6347", wallStyle:"bars",   floater:"150,255,170",
+              mech:"carwall", sideDoor:true },
+  };
+
+  // ===== 角色配置（含专属技能）=====
+  const CHARS = {
+    huang:  { name:"蛋小黄", body:"#ffe975", shell:"#ffb02e", speedMul:1.12,
+              skill:{ name:"滚动", cd:40, dur:1, desc:"滚动 1 秒，速度 +12，可撞飞幽灵" } },
+    puff:   { name:"泡芙",   body:"#fff5f8", shell:"#ff8fc2",
+              skill:{ name:"点亮", cd:40, dur:8, desc:"点亮周围 8 秒，照亮身边队友眼前的路" } },
+    duoduo: { name:"毛哆哆", body:"#f6c98f", shell:"#c9762f",
+              skill:{ name:"吃", cd:40, dur:1.5, desc:"张嘴 1.5 秒：靠近吃宝石/小幽灵(+15)/宝箱" } },
+    lv:     { name:"蛋小绿", body:"#c8f5b0", shell:"#57c84d", lightMul:1.25,
+              skill:{ name:"治疗", cd:40, dur:10, desc:"自疗10秒每秒+6；附近有队友则飘到其身边定住10秒，每秒给双方+6" } },
+  };
+
+  const game = {
+    state: STATE.MENU, hp: 100, gems: 0, time: 0, winner: "",
+    eatT: 0, belly: [], healFx: 0, swingFx: 0, healChan: null, reviveChan: null,
+    spectate: 0, potReviveT: 0, huntStarted: false, enterT: 0, roundCounted: false,
+    carOpen: false, cartPush: false, cartMode: false, gateChan: null, ridingCart: null, inSewer: false,   // 车门 / 购物车 / 进门鉴 / 下水道
+    teammates: ["puff","duoduo","lv"], matesCustomized: false, mateCount: 3,
+    difficulty: "easy", map: "castle", char: "huang",
+    cfg: DIFF.normal, theme: MAPS.castle, skin: CHARS.huang,
+    skillCd: 0, skillT: 0, scareFx: 0, rollAngle: 0,
+  };
+
+  // ===== 实体 =====
+  let grid = [];
+  let player = { x: 0, y: 0, r: 14, face: 1, invuln: 0, startX: 0, startY: 0 };
+  let treasure = { x: 0, y: 0 };
+  let monsters = [], gems = [], bots = [], floaters = [], floatTexts = [], lights = [], fires = [], drops = [], throwns = [];
+  let puppy = null;   // 高级会员的小狗
+  let mouse = { x: 0, y: 0, seen: false };   // 鼠标位置（用于瞄准扔东西）
+  let chestState = "intact", chestCarrier = null;   // 宝箱：intact 可开 / carried 被吞在肚子里
+
+  // ===== 钱包 & 商城（鱼叉是武器：持有即无限挥砍，死亡才掉落）=====
+  let inv = { gems: 0, member: "none", stats: { easy:0, normal:0 } };
+  try { const s = localStorage.getItem("eggy_inv"); if (s) inv = JSON.parse(s); } catch(e){}
+  if (!inv.member) inv.member = "none";
+  if (!inv.stats) inv.stats = { easy:0, normal:0 };
+  function saveInv(){ try { localStorage.setItem("eggy_inv", JSON.stringify(inv)); } catch(e){} }
+  const shopMask = document.getElementById("shopMask");
+  document.getElementById("shopBtn").addEventListener("click", openShop);
+  document.getElementById("shopClose").addEventListener("click", () => shopMask.style.display="none");
+  shopMask.addEventListener("click", (e) => { if (e.target===shopMask) shopMask.style.display="none"; });
+  document.getElementById("buyHarpoon").addEventListener("click", () => {
+    if (hasItem("harpoon")){ document.getElementById("shopMsg").textContent="你已经有一把鱼叉了"; return; }
+    if (inv.gems<10){ document.getElementById("shopMsg").textContent="宝石不足，还差 "+(10-inv.gems); return; }
+    inv.gems-=10; saveInv();
+    const where=addItem("harpoon");
+    document.getElementById("wallet").textContent=inv.gems;
+    document.getElementById("harpoonOwned").textContent="1";
+    document.getElementById("shopMsg").textContent = where ? "购买成功！已放入"+(where==="hot"?"快捷栏":"背包")+"，按 H 挥叉" : "背包满了！";
+    updateHud();
+  });
+  document.getElementById("buyBasic").addEventListener("click", () => {
+    if (inv.member!=="none"){ document.getElementById("shopMsg").textContent="你已经是会员了"; return; }
+    if (inv.gems<20){ document.getElementById("shopMsg").textContent="宝石不足，还差 "+(20-inv.gems); return; }
+    inv.gems-=20; inv.member="basic"; saveInv();
+    updateMemberUI(); renderInv();
+    document.getElementById("wallet").textContent=inv.gems;
+    document.getElementById("shopMsg").textContent="开通低级会员！快捷栏 +1，共 7 格";
+  });
+  document.getElementById("buyPremium").addEventListener("click", () => {
+    if (inv.member==="premium"){ document.getElementById("shopMsg").textContent="你已经是高级会员了"; return; }
+    if (inv.gems<30){ document.getElementById("shopMsg").textContent="宝石不足，还差 "+(30-inv.gems); return; }
+    inv.gems-=30; inv.member="premium"; saveInv();
+    updateMemberUI(); renderInv(); ensurePuppy();
+    document.getElementById("wallet").textContent=inv.gems;
+    document.getElementById("shopMsg").textContent="开通高级会员！小狗来啦，宠物背包 +1，共 8 格";
+  });
+  document.getElementById("buyRevive").addEventListener("click", () => {
+    if (inv.gems<5){ document.getElementById("shopMsg").textContent="宝石不足，还差 "+(5-inv.gems); return; }
+    inv.gems-=5; saveInv();
+    const where=addItem("revive");
+    document.getElementById("wallet").textContent=inv.gems;
+    updateReviveOwned();
+    document.getElementById("shopMsg").textContent = where ? "购买成功！已放入"+(where==="hot"?"快捷栏":"背包")+"，靠近尸体按 U 使用" : "背包满了！";
+  });
+  function updateReviveOwned(){
+    document.getElementById("reviveOwned").textContent = invSlots.filter(s=>s && s.type==="revive").length;
+  }
+  function updateMemberUI(){
+    document.getElementById("memberBasicOwned").textContent = inv.member==="none" ? "" : (inv.member==="basic"?"已开通":"（已含）");
+    document.getElementById("memberPremiumOwned").textContent = inv.member==="premium" ? "已开通" : "";
+    document.getElementById("buyBasic").textContent = inv.member!=="none" ? "已拥有" : "购买";
+    document.getElementById("buyPremium").textContent = inv.member==="premium" ? "已拥有" : (inv.member==="basic" ? "升级" : "购买");
+  }
+  function openShop(){
+    document.getElementById("wallet").textContent=inv.gems;
+    document.getElementById("harpoonOwned").textContent=hasItem("harpoon")?"1":"0";
+    updateReviveOwned();
+    document.getElementById("shopMsg").textContent="";
+    updateMemberUI();
+    shopMask.style.display="flex";
+  }
+  function bankGems(){ inv.gems+=game.gems; game.gems=0; updateHud(); saveInv(); }
+
+  // ===== 背包：快捷栏（常显）+ 背包格（点击展开）+ 宠物背包（会员）=====
+  const harpoonSVG = '<svg viewBox="0 0 24 24" width="24" height="24"><line x1="4" y1="20" x2="18" y2="6" stroke="#ffd76a" stroke-width="3.5" stroke-linecap="round"/><path d="M18 6 l-6 1.2 M18 6 l-1.2 6" stroke="#fff2c9" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>';
+  let invSlots = [null,null,null,null,null,null,null,null];   // 最多 8 格
+  let bagOpen = false;
+  const hotN = () => 3 + (inv.member && inv.member!=="none" ? 1 : 0);   // 会员快捷栏 +1
+  const bagN = () => 3;
+  const petStart = () => hotN()+bagN();
+  const petN = () => (inv.member==="premium" ? 1 : 0);
+  const potionSVG = '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M9 3 h6 v3 c3 2 4 4 4 7 a7 7 0 0 1 -14 0 c0 -3 1 -5 4 -7 z" fill="#7cfc9b" stroke="#2f6b3a" stroke-width="1.5"/><rect x="10.5" y="1" width="3" height="3" fill="#fff2c9"/><path d="M12 10 v6 M9 13 h6" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/></svg>';
+  const itemIcon = (type) => type==="harpoon" ? harpoonSVG : type==="revive" ? potionSVG : "";
+  const itemName = (type) => type==="harpoon" ? "鱼叉" : type==="revive" ? "返魂药水" : "物品";
+  const hasItem = (type) => invSlots.slice(0, petStart()+petN()).some(s=>s && s.type===type);
+  const hasInHotbar = (type) => invSlots.slice(0, hotN()).some(s=>s && s.type===type);
+  function addItem(type){
+    const n=hotN(), b=bagN(), p=petN(), ps=petStart();
+    for (let i=0;i<n;i++) if (!invSlots[i]){ invSlots[i]={type}; renderInv(); return "hot"; }
+    for (let i=n;i<n+b;i++) if (!invSlots[i]){ invSlots[i]={type}; renderInv(); return "bag"; }
+    for (let i=ps;i<ps+p;i++) if (!invSlots[i]){ invSlots[i]={type}; renderInv(); return "pet"; }
+    return null;
+  }
+  function removeFromHotbar(type){
+    const n=hotN();
+    for (let i=0;i<n;i++){ if (invSlots[i] && invSlots[i].type===type){ invSlots[i]=null; renderInv(); return true; } }
+    return false;
+  }
+  let equipped = null;   // 快捷栏中正在手持的格子（null=空手）
+  function moveItem(i, to){   // to 省略 = 按旧规则移到另一区（点背包格）；给 to = 拖拽交换/放入
+    if (to===undefined){
+      const item=invSlots[i]; if (!item) return;
+      const n=hotN(), b=bagN();
+      const from = i<n ? [n,n+b] : [0,n];
+      for (let j=from[0];j<from[1];j++) if (!invSlots[j]){ invSlots[j]=item; invSlots[i]=null; if(equipped===i) equipped=null; renderInv(); return; }
+      addFloat(player.x, player.y-26, "没有空位", "#ff8888");
+      return;
+    }
+    const a=invSlots[i], bb=invSlots[to];
+    invSlots[to]=a; invSlots[i]=bb;
+    if (equipped===i) equipped=to; else if (equipped===to) equipped=i;
+    renderInv();
+  }
+  function onSlotClick(i){
+    if (i<hotN()){ equipped = (equipped===i ? null : i); renderInv(); }  // 快捷栏：点一下装备/空手
+    else moveItem(i);                                                    // 背包/宠物包：点一下移到快捷栏
+  }
+  // 拖拽：把物品拖到其它格（背包→快捷栏 等）
+  let drag=null;
+  const invGhost=document.createElement("div");
+  invGhost.className="inv-ghost"; document.body.appendChild(invGhost);
+  function onSlotDown(e, i){
+    if (e.button!==0) return;
+    e.preventDefault();
+    drag={ from:i, x:e.clientX, y:e.clientY, moved:false };
+    if (invSlots[i]){ invGhost.innerHTML=itemIcon(invSlots[i].type); invGhost.style.display="flex"; invGhost.style.left=(e.clientX-21)+"px"; invGhost.style.top=(e.clientY-21)+"px"; }
+    else invGhost.style.display="none";
+  }
+  document.addEventListener("mousemove", (e)=>{
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(e.clientX-drag.x, e.clientY-drag.y)>6) drag.moved=true;
+    if (drag.moved && invGhost.style.display!=="none"){ invGhost.style.left=(e.clientX-21)+"px"; invGhost.style.top=(e.clientY-21)+"px"; }
+  });
+  document.addEventListener("mouseup", (e)=>{
+    if (!drag) return;
+    const d=drag; drag=null; invGhost.style.display="none";
+    if (d.moved){
+      const el=document.elementFromPoint(e.clientX, e.clientY);
+      let to=-1;
+      if (el){ const s=el.closest(".inv-slot"); if (s && s.dataset.idx!==undefined) to=+s.dataset.idx; }
+      if (to>=0 && to!==d.from) moveItem(d.from, to);
+    } else {
+      onSlotClick(d.from);
+    }
+  });
+  function renderInv(){
+    const n=hotN(), b=bagN(), p=petN(), ps=petStart();
+    const hot=document.getElementById("invHot"), bag=document.getElementById("invBag"),
+          petW=document.getElementById("invPetWrap"), pet=document.getElementById("invPet");
+    hot.innerHTML=""; bag.innerHTML=""; pet.innerHTML="";
+    const mk=(i)=>{
+      const s=document.createElement("div");
+      s.className="inv-slot"+(invSlots[i]?"":" empty")+(equipped===i?" equipped":"");
+      s.dataset.idx = i;
+      s.innerHTML = invSlots[i] ? itemIcon(invSlots[i].type) : '<span class="slot-tag">空</span>';
+      s.title = invSlots[i] ? "点击/拖拽移动" : (i<hotN()?"点击空手":"空");
+      s.addEventListener("mousedown", (e)=>onSlotDown(e, i));
+      return s;
+    };
+    for (let i=0;i<n;i++) hot.appendChild(mk(i));
+    for (let i=n;i<n+b;i++) bag.appendChild(mk(i));
+    petW.style.display = p ? "flex" : "none";
+    for (let i=ps;i<ps+p;i++) pet.appendChild(mk(i));
+    bag.style.display = bagOpen ? "flex" : "none";
+    document.getElementById("bagBtn").textContent = bagOpen ? "收起背包" : "背包";
+  }
+  document.getElementById("bagBtn").addEventListener("click", ()=>{ bagOpen=!bagOpen; renderInv(); });
+  renderInv();
+
+  // ===== 小狗（高级会员宠物）=====
+  function ensurePuppy(){
+    if (inv.member==="premium" && !puppy){
+      puppy={ x:player.startX||W/2, y:player.startY||H/2, face:1, wag:0, wob:Math.random()*6 };
+    } else if (inv.member!=="premium") puppy=null;
+  }
+
+  // ===== 输入 =====
+  const keys = {};
+  document.addEventListener("mousemove", (e)=>{
+    mouse.x=e.clientX; mouse.y=e.clientY; mouse.seen=true;
+  });
+  document.addEventListener("keydown", (e) => {
+    const k = e.key.toLowerCase();
+    if (["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"," "].includes(k)) e.preventDefault();
+    keys[k] = true;
+    if (k === " ") togglePause();
+    if (k === "j") useSkill();
+    if (k === "k") eatAction();
+    if (k === "h") throwHarpoon();
+    if (k === "t") throwEquipped();
+    if (k === "u") useEquipped();
+    if (k === "g") dropHarpoon();
+    if (k === "1" && bots[0]) toggleBot(bots[0]);
+    if (k === "2" && bots[1]) toggleBot(bots[1]);
+    if (k === "3" && bots[2]) toggleBot(bots[2]);
+    if (k === "r") newGame();
+    if (k === "e" && game.state===STATE.PLAYING){
+      let done=false;
+      if (game.theme.mech==="carwall" && game.time>=18 && !game.carOpen){ openCarDoor(); done=true; }
+      if (!done && game.theme.cart && cartInteract()) done=true;
+      if (!done) gateInteract();
+    }
+    // 阵亡观战：左右箭头切换人机视角
+    if (game.state===STATE.DEAD){
+      if (k==="arrowleft") cycleSpectate(-1);
+      else if (k==="arrowright") cycleSpectate(1);
+    }
+  });
+  document.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
+
+  // 点选队友切换跟随/自由（城堡：18 秒后点车门/E 键开门）
+  function openCarDoor(){
+    if (game.state!==STATE.PLAYING || game.carOpen) return;
+    game.carOpen=true;
+    addFloat(carX, H+2, "车门开启！出发吧", "#ffd76a");
+  }
+  function startGateChan(gx, gn, gy){   // 进门鉴：站 3 秒开门（人机刷卡不阻塞玩家）
+    if ((game.gateChan && game.gateChan.by==="player") || game.state!==STATE.PLAYING || gates[gn].openT>0) return;
+    const yy = gy || GATE_ROW*TILE-16;
+    game.gateChan={ gate:gn, t:3, by:"player", gx, gy:yy };
+    addFloat(gx, yy, "进门鉴验证中…", "#9ecbff");
+  }
+  function cartInteract(){   // E 键：上车/下车/放车
+    if (game.ridingCart){ releaseCart(game.ridingCart); addFloat(player.x,player.y-26,"下车","#9ecbff"); return true; }
+    if (game.cartPush){ releaseCart(game.cart); addFloat(player.x,player.y-26,"放下购物车","#9ecbff"); return true; }
+    for (const c of carts){
+      if (c.pusher && c.pusher!=="player" && !c.rider && Math.hypot(player.x-c.x,player.y-c.y)<44){
+        c.rider="player"; game.ridingCart=c;
+        addFloat(player.x,player.y-26,"坐上队友的购物车","#9ecbff");
+        return true;
+      }
+    }
+    return false;
+  }
+  function gateInteract(){
+    const spots=[[GATE_COL*TILE+TILE/2,"main"],[(COLS-1)*TILE+TILE/2,"side"]];
+    for (const [gx,gn] of spots){
+      if (gn==="side" && !game.theme.sideDoor) continue;
+      if (gates[gn].openT<=0 && Math.hypot(player.x-gx, player.y-(GATE_ROW*TILE+TILE/2))<52){ startGateChan(gx, gn); return; }
+    }
+    // 下水道门（超市）：在走廊内靠近刷卡
+    if (game.theme.cart && game.inSewer && gates.sewer.openT<=0 &&
+        Math.hypot(player.x-SEWER_DOOR_X, player.y-(SEWER_Y+SEWER/2))<52){ startGateChan(SEWER_DOOR_X, "sewer", SEWER_Y-8); return; }
+  }
+  canvas.addEventListener("click", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX-rect.left)*(W/rect.width), my = (e.clientY-rect.top)*(H_TOT/rect.height);
+    if (game.theme.mech==="carwall" && game.time>=18 && !game.carOpen){
+      if (mx>carX-80 && mx<carX+80 && my>H+10 && my<H+60){   // 点击车门（大范围，好点中）
+        openCarDoor();
+        return;
+      }
+    }
+    // 点击进门鉴（人机在刷卡时玩家也能点，玩家优先）
+    if (game.state===STATE.PLAYING && !(game.gateChan && game.gateChan.by==="player")){
+      const spots=[[GATE_COL*TILE+TILE/2,"main"],[(COLS-1)*TILE+TILE/2,"side"]];
+      for (const [gx,gn] of spots){
+        if (gn==="side" && !game.theme.sideDoor) continue;
+        if (Math.hypot(mx-gx, my-(GATE_ROW*TILE+TILE/2))<42 && gates[gn].openT<=0){
+          startGateChan(gx, gn);
+          return;
+        }
+      }
+      // 点击下水道门刷卡（超市下水道走廊左端）
+      if (game.theme.cart && game.inSewer && gates.sewer.openT<=0 &&
+          Math.hypot(mx-SEWER_DOOR_X, my-(SEWER_Y+SEWER/2))<44){ startGateChan(SEWER_DOOR_X, "sewer", SEWER_Y-8); return; }
+    }
+    // 点击购物车：点击人机推的购物车 → 上车（不再靠近自动上）
+    if (game.state===STATE.PLAYING && game.theme.cart && !game.cartPush && !game.ridingCart && !game.huntStarted){
+      for (const c of carts){
+        if (c.pusher && c.pusher!=="player" && !c.rider && Math.hypot(mx-c.x,my-c.y)<44){
+          c.rider="player"; game.ridingCart=c;
+          addFloat(player.x, player.y-26, "坐上队友的购物车", "#9ecbff");
+          return;
+        }
+      }
+    }
+    for (const b of bots){
+      if (b.dead) continue;
+      if (Math.hypot(b.x-mx, b.y-my) < 22){ toggleBot(b); return; }
+    }
+  });
+  function toggleBot(b){
+    if (b.dead) return;
+    b.mode = b.mode==="follow" ? "hunt" : "follow";
+    addFloat(b.x, b.y-24, b.mode==="follow" ? "跟随你" : "自由行动", "#9ecbff");
+  }
+  function addFloat(x, y, text, color){ floatTexts.push({ x, y, text, color, t:1 }); }
+
+  // ===== UI =====
+  const overlay = document.getElementById("overlay");
+  const ovTitle = document.getElementById("ov-title");
+  const ovText = document.getElementById("ov-text");
+  const ovBtn = document.getElementById("ov-btn");
+  const picks = document.getElementById("picks");
+  function showOverlay(t, txt, btn, showPicks) {
+    ovTitle.textContent = t; ovText.innerHTML = txt; ovBtn.textContent = btn;
+    picks.style.display = showPicks ? "block" : "none";
+    overlay.classList.remove("hidden");
+  }
+  function hideOverlay() { overlay.classList.add("hidden"); }
+  ovBtn.addEventListener("click", () => {
+    if (game.state === STATE.MENU || game.state === STATE.OVER || game.state === STATE.WIN) newGame();
+    else if (game.state === STATE.PAUSED) togglePause();
+  });
+  function updateHud() {
+    document.getElementById("charName").textContent = CHARS[game.char].name;
+    document.getElementById("hp").textContent = game.hp;
+    document.getElementById("gems").textContent = game.gems;
+    document.getElementById("time").textContent = Math.floor(game.time);
+  }
+
+  // 难度 / 地图选择
+  function setActive(rowId, btn) {
+    document.querySelectorAll("#" + rowId + " .pick-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
+  function renderMateButtons(){
+    for (let i=0;i<3;i++){
+      document.querySelectorAll("#mate-row-"+i+" .pick-btn").forEach(b=>{
+        b.classList.toggle("active", b.dataset.mchar===game.teammates[i]);
+      });
+      document.getElementById("mate-row-"+i).classList.toggle("off", i>=game.mateCount);   // 超出数量置灰
+    }
+  }
+  // ===== 难度解锁：简单→5局→普通→5局→困难 =====
+  function isUnlocked(d){
+    if (d==="easy") return true;
+    if (d==="normal") return (inv.stats.easy||0)>=5;
+    if (d==="hard") return (inv.stats.normal||0)>=5;
+    return true;
+  }
+  function renderDiffButtons(){
+    const base={easy:"简单", normal:"普通", hard:"困难"};
+    document.querySelectorAll("#diff-row .pick-btn").forEach(b=>{
+      const d=b.dataset.diff, ok=isUnlocked(d);
+      b.disabled=!ok;
+      b.classList.toggle("off", !ok);
+      if (ok) b.textContent=base[d];
+      else if (d==="normal") b.textContent="普通·简单x"+(inv.stats.easy||0)+"/5";
+      else b.textContent="困难·普通x"+(inv.stats.normal||0)+"/5";
+    });
+  }
+  function finishRound(){   // 完成一局（胜利/跳过/退出）计入进度
+    if (game.roundCounted) return;
+    game.roundCounted=true;
+    if (inv.stats[game.difficulty]!==undefined) inv.stats[game.difficulty]++;
+    saveInv();
+    renderDiffButtons();
+  }
+  document.querySelectorAll(".pick-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      if (b.dataset.diff) { if (!isUnlocked(b.dataset.diff)) return; game.difficulty = b.dataset.diff; setActive("diff-row", b); }
+      if (b.dataset.map) {
+        game.map = b.dataset.map; setActive("map-row", b);
+        document.documentElement.style.setProperty("--accent", MAPS[game.map].accent);
+      }
+      if (b.dataset.char) {
+        game.char = b.dataset.char; setActive("char-row", b);
+        document.getElementById("charName").textContent = CHARS[game.char].name;
+        updateCharSkill();
+        if (!game.matesCustomized) game.teammates = Object.keys(CHARS).filter(k=>k!==game.char);
+        renderMateButtons();
+        return; // 换角色不重生成地图
+      }
+      if (b.dataset.mi!==undefined) {
+        game.teammates[+b.dataset.mi] = b.dataset.mchar;
+        game.matesCustomized = true;
+        renderMateButtons();
+        return;
+      }
+      if (b.dataset.mc!==undefined) {
+        game.mateCount=+b.dataset.mc;
+        setActive("matecount-row", b);
+        renderMateButtons();
+        return;
+      }
+      // 非游戏中：刷新背景预览
+      if (game.state !== STATE.PLAYING && game.state !== STATE.PAUSED) {
+        game.cfg = DIFF[game.difficulty]; game.theme = MAPS[game.map];
+        generateLevel();
+      }
+    });
+  });
+
+  // ===== 地图生成 =====
+  function bfsReachable(sr, sc, tr, tc) {
+    const vis = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+    const q = [[sr, sc]]; vis[sr][sc] = true;
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    while (q.length) {
+      const [r, c] = q.shift();
+      if (r === tr && c === tc) return true;
+      for (const [dr, dc] of dirs) {
+        const nr = r + dr, nc = c + dc;
+        if (nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!vis[nr][nc]&&grid[nr][nc]!==CELL.WALL) { vis[nr][nc]=true; q.push([nr,nc]); }
+      }
+    }
+    return false;
+  }
+  function clearAround(r, c) {
+    for (let dr=-1; dr<=1; dr++) for (let dc=-1; dc<=1; dc++) {
+      const nr=r+dr, nc=c+dc;
+      if (nr>=0&&nr<ROWS&&nc>=0&&nc<COLS) grid[nr][nc]=CELL.EMPTY;
+    }
+  }
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} }
+  const tileCenter = (r,c) => ({ x: c*TILE+TILE/2, y: r*TILE+TILE/2 });
+
+  function generateLevel() {
+    const cfg = game.cfg;
+    for (let tries=0; tries<60; tries++) {
+      grid = Array.from({ length: ROWS }, () =>
+        Array.from({ length: COLS }, () => (Math.random()<0.16?CELL.WALL:CELL.EMPTY)));
+
+      const sr=(ROWS/2)|0, sc=(COLS/2)|0;
+      clearAround(sr, sc);
+
+      let best=null, bestD=-1;
+      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+        if (grid[r][c]!==CELL.EMPTY) continue;
+        const d=Math.abs(r-sr)+Math.abs(c-sc);
+        if (d>bestD){bestD=d;best={r,c};}
+      }
+      const tr=best.r, tc=best.c;
+      grid[tr][tc]=CELL.TREASURE; clearAround(tr,tc);
+      if (!bfsReachable(sr,sc,tr,tc)) continue;
+
+      // 地牢底部封墙，只留大门缺口（城堡另开右侧侧门）
+      for (let c=0;c<COLS;c++) grid[GATE_ROW][c]=CELL.WALL;
+      grid[GATE_ROW][GATE_COL]=CELL.EMPTY;
+      if (game.theme.sideDoor) grid[GATE_ROW][COLS-1]=CELL.EMPTY;
+
+      // 玩家和队友出生在车旁（城堡/超市/疯人院：左下大车里；超市车更远）
+      carX = game.theme.mech==="carwall" ? (game.map==="market" ? 80 : 120) : W/2;
+      carY = game.theme.mech==="carwall" ? H+46 : H+52;
+      player.startX=carX; player.startY=carY; player.x=carX; player.y=carY;
+      // 超市购物车（车与大门之间摆 4 辆）
+      carts=[];
+      if (game.theme.cart){
+        for (let i=0;i<4;i++) carts.push({ x:150+i*60, y:H+70, face:1, pusher:null, rider:null });
+      }
+      gates={ main:{openT:0}, side:{openT:0}, sewer:{openT:0} };
+      game.cartPush=false; game.cart=null; game.gateChan=null; game.ridingCart=null; game.cartMode=false; game.inSewer=false;
+      const tc2=tileCenter(tr,tc); treasure.x=tc2.x; treasure.y=tc2.y;
+
+      let empties=[];
+      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
+        if (grid[r][c]===CELL.EMPTY && !(r===sr&&c===sc)) empties.push({r,c});
+      shuffle(empties);
+
+      monsters=[];   // 进入大门后才刷小幽灵
+
+      gems=[]; const gCount=Math.min(14,(empties.length/2)|0);
+      for (let k=0;k<gCount && k<empties.length;k++){
+        const e=empties[k]; const p=tileCenter(e.r,e.c);
+        gems.push({ x:p.x, y:p.y, r:8, taken:false, ph:Math.random()*6 });
+      }
+
+      floaters=[];
+      lights=[];
+      fires=[];
+      drops=[];
+      throwns=[];
+      for (let i=0;i<18;i++) floaters.push({ x:Math.random()*W, y:Math.random()*H, s:0.3+Math.random()*0.6, sp:6+Math.random()*14, a:0.05+Math.random()*0.12 });
+
+      // 3 个 AI 队友（按玩家选的队友数量生成）
+      bots=[];
+      for (let i=0;i<game.mateCount;i++){
+        bots.push({ x:player.startX+(i-1)*22, y:player.startY+20, r:11, face:1,
+                    skin:CHARS[game.teammates[i]], dead:false, wob:Math.random()*6, fx:(i-1)*32,
+                    cd:15+Math.random()*20, invuln:0, roll:0, boost:0, rAng:0, mode:"hunt",
+                    detour:0, detourDir:1, eatT:0, belly:[], hp:100, hitCd:0,
+                    hasHarpoon:true, potions:1, atkCd:0, atkFx:0, cart:null, riding:null,
+                    gatePref: Math.random()<0.5 ? "main" : "side" });   // 人机什么都买 + 自己选门
+      }
+      ensurePuppy();
+      return;
+    }
+  }
+
+  // ===== 碰撞 =====
+  function hitsWall(x, y, r) {
+    const minC=Math.floor((x-r)/TILE), maxC=Math.floor((x+r)/TILE);
+    const minR=Math.floor((y-r)/TILE), maxR=Math.floor((y+r)/TILE);
+    for (let rr=minR; rr<=maxR; rr++) for (let cc=minC; cc<=maxC; cc++) {
+      if (cc<0||cc>=COLS) return true;
+      if (rr<0) return true;
+      if (rr>=ROWS){                         // 外部停车区 + 下水道层
+        if (game.theme.mech==="carwall" && !game.carOpen){   // 城堡：开门后整圈空气墙全部删掉
+          const cy=H+26;
+          if (x+r>carX-70-8 && x-r<carX-70+8 && y+r>cy-8) return true;   // 左墙
+          if (x+r>carX+70-8 && x-r<carX+70+8 && y+r>cy-8) return true;   // 右墙
+          if (y-r<cy+8 && y+r>cy-8 && x+r>carX-70-8 && x-r<carX+70+8) return true;   // 车门（蓝墙）
+        }
+        if (rr>=ROWS+3){                     // 下水道层（超市专属通道）
+          if (!game.theme.cart) return true;                 // 非超市图不可达
+          const sy=SEWER_Y;
+          if (y-r<sy+8 || y+r>sy+SEWER-8) return true;       // 走廊上下壁
+          if (x-r<SEWER_L-6 || x+r>SEWER_R+6) return true;   // 走廊左右端墙
+          if (gates.sewer.openT<=0 && x-r<SEWER_DOOR_X+10 && x+r>SEWER_DOOR_X-10) return true;  // 下水道门（刷卡前关着）
+        }
+        continue;
+      }
+      if (grid[rr][cc]===CELL.WALL) return true;
+      if (rr===GATE_ROW){
+        if (cc===GATE_COL && gates.main.openT<=0) return true;                 // 主门：需进门鉴
+        if (game.theme.sideDoor && cc===COLS-1 && gates.side.openT<=0) return true;  // 侧门：需进门鉴
+      }
+    }
+    return false;
+  }
+
+  // ===== 进入大门后开始寻宝 =====
+  function spawnMonsters(){
+    const cfg=game.cfg;
+    const sr=(ROWS/2)|0, sc=(COLS/2)|0;
+    let empties=[];
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
+      if (grid[r][c]===CELL.EMPTY) empties.push({r,c});
+    shuffle(empties);
+    let ei=0;
+    for (let k=0;k<cfg.monsters && ei<empties.length;k++){
+      let cell=null;
+      while (ei<empties.length){ const e=empties[ei++];
+        if (Math.abs(e.r-sr)+Math.abs(e.c-sc) > 6){ cell=e; break; } }
+      if (!cell) cell=empties[(Math.random()*empties.length)|0];
+      const p=tileCenter(cell.r,cell.c);
+      monsters.push({ type:"ghost", x:p.x, y:p.y, r:13+Math.random()*5, angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
+                      state:"chase", timer:0, hp:2, hue:200+Math.random()*80, wanderT:0 });
+    }
+    // 傀儡蛋：近战贴脸怪（不喷火，碰到就 -20）
+    for (let k=0;k<cfg.puppets && ei<empties.length;k++){
+      let cell=null;
+      while (ei<empties.length){ const e=empties[ei++];
+        if (Math.abs(e.r-sr)+Math.abs(e.c-sc) > 6){ cell=e; break; } }
+      if (!cell) cell=empties[(Math.random()*empties.length)|0];
+      const p=tileCenter(cell.r,cell.c);
+      monsters.push({ type:"puppet", x:p.x, y:p.y, r:16+Math.random()*3, angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
+                      state:"chase", timer:0, hp:2, hue:285+Math.random()*25, wanderT:0 });
+    }
+  }
+  function releaseCart(c){
+    if (c.rider){ if (c.rider!=="player") c.rider.riding=null; c.rider=null; }
+    if (c.pusher){ if (c.pusher!=="player") c.pusher.cart=null; c.pusher=null; }
+    if (game.cart===c){ game.cart=null; game.cartPush=false; }
+    if (game.ridingCart===c){ game.ridingCart=null; }
+  }
+  function startHunt(){
+    game.huntStarted=true;
+    for (const c of carts) releaseCart(c);   // 购物车不能进超市
+    spawnMonsters();
+    addFloat(player.x, player.y-26, "寻宝开始！", "#ffd76a");
+  }
+
+  // ===== 流程 =====
+  function newGame() {
+    game.state=STATE.PLAYING;
+    hideSpectate();
+    if (!isUnlocked(game.difficulty)){ game.difficulty="easy"; renderDiffButtons(); }   // 保险：难度被锁回简单
+    game.cfg=DIFF[game.difficulty]; game.theme=MAPS[game.map]; game.skin=CHARS[game.char];
+    game.hp=100;
+    game.gems=0; game.time=0; game.skillCd=0; game.skillT=0; game.scareFx=0; game.winner="";
+    game.eatT=0; game.belly=[]; game.swingFx=0; game.healChan=null; game.reviveChan=null; chestState="intact"; chestCarrier=null;
+    game.huntStarted=false; game.enterT=0; game.roundCounted=false; game.carOpen=false;
+    generateLevel();
+    player.x=player.startX; player.y=player.startY; player.vx=0; player.vy=0; player.invuln=0;
+    updateHud(); hideOverlay();
+  }
+  function togglePause() {
+    if (game.state===STATE.PLAYING){ game.state=STATE.PAUSED; showOverlay("已暂停","喘口气，幽灵也在等～","继续冒险",false); }
+    else if (game.state===STATE.PAUSED){ game.state=STATE.PLAYING; hideOverlay(); }
+  }
+
+  // ===== 吃与宝箱 =====
+  function openChest(txt){
+    game.state=STATE.WIN;
+    bankGems();
+    finishRound();
+    game.winner=txt;
+    showOverlay("全队胜利！", txt+"<br>宝石 "+game.gems+" · 用时 "+Math.floor(game.time)+" 秒","再玩一次",true);
+  }
+  function eatGhost(eater, m, belly){
+    if (m.r >= eater.r+8){ addFloat(m.x, m.y-20, "吃不掉！", "#ff8888"); return; }
+    m.dead=true;
+    belly.push({type: m.type==="puppet" ? "puppet" : "ghost", t:15});
+    game.gems+=15; updateHud();
+    addFloat(m.x, m.y-18, "吃掉"+(m.type==="puppet"?"傀儡蛋":"小幽灵")+" +15", "#ffd76a");
+  }
+  function spawnFire(m, tx, ty){   // 小幽灵喷的小火焰：会落地成火堆，靠近/踩上 -20
+    const ang=Math.atan2(ty-m.y, tx-m.x)+(Math.random()-0.5)*0.6;
+    fires.push({ x:m.x+Math.cos(ang)*m.r, y:m.y+Math.sin(ang)*m.r,
+                 vx:Math.cos(ang)*230, vy:Math.sin(ang)*230,
+                 life:2.2, t:0, landed:false, active:true });
+  }
+  function dropBelly(x, y, belly){
+    if (!belly || !belly.length) return;
+    for (const it of belly){
+      if (it.type==="gem"){
+        gems.push({ x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30, r:8, taken:false, ph:Math.random()*6 });
+      } else if (it.type==="ghost" || it.type==="puppet"){
+        monsters.push({ type:it.type, x:x+(Math.random()-0.5)*30, y:y+(Math.random()-0.5)*30,
+                        r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
+                        angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
+                        hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0 });
+      } else if (it.type==="chest"){
+        treasure.x=x; treasure.y=y; chestState="intact"; chestCarrier=null;
+      }
+    }
+    belly.length=0;
+  }
+  function spitItem(ent, it){   // 15 秒消化到期：吐在原地
+    const x=ent.x+(Math.random()-0.5)*24, y=ent.y+(Math.random()-0.5)*24;
+    if (it.type==="gem") gems.push({ x, y, r:8, taken:false, ph:Math.random()*6 });
+    else if (it.type==="ghost" || it.type==="puppet")
+      monsters.push({ type:it.type, x, y, r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
+                      angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
+                      hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0 });
+    else if (it.type==="chest"){
+      treasure.x=ent.x; treasure.y=ent.y; chestState="intact"; chestCarrier=null;
+      addFloat(ent.x, ent.y-24, "吐出宝箱", "#9ecbff");
+    }
+  }
+  function spitChest(ent){
+    treasure.x=ent.x; treasure.y=ent.y;
+    chestState="intact"; chestCarrier=null;
+    const belly = ent===player ? game.belly : ent.belly;
+    if (belly) { const i=belly.findIndex(it=>it.type==="chest"); if (i>=0) belly.splice(i,1); }
+    addFloat(ent.x, ent.y-24, "吐出宝箱", "#9ecbff");
+  }
+  function eatAction(){  // K 键：毛哆哆吃宝箱
+    if (game.state!==STATE.PLAYING || game.char!=="duoduo") return;
+    if (chestState==="intact" && Math.hypot(player.x-treasure.x, player.y-treasure.y)<56){
+      chestState="carried"; chestCarrier=player;
+      game.belly.push({type:"chest", t:15});
+      addFloat(player.x, player.y-26, "吃掉宝箱！", "#ffd76a");
+    }
+  }
+
+  // ===== 角色技能 =====
+  function useSkill() {
+    if (game.state!==STATE.PLAYING || game.skillCd>0) return;
+    const ch=CHARS[game.char];
+    game.skillCd=ch.skill.cd;
+    addFloat(player.x, player.y-26, ch.skill.name+"！", "#ffd76a");
+    if (game.char==="huang") game.skillT=ch.skill.dur;                 // 滚动
+    else if (game.char==="puff") lights.push({ e:player, t:8, r:190 }); // 点亮
+    else if (game.char==="duoduo"){                                     // 吃
+      if (chestState==="intact" && Math.hypot(player.x-treasure.x,player.y-treasure.y)<56) openChest("你打开了宝箱");
+      else if (chestState==="carried" && chestCarrier===player) spitChest(player);
+      else game.eatT=ch.skill.dur;
+    }
+    else if (game.char==="lv"){                                         // 治疗：持续引导
+      let target=null, td=170;
+      for (const b of bots){ if (!b.dead){ const d=Math.hypot(b.x-player.x,b.y-player.y); if (d<td){td=d;target=b;} } }
+      game.healChan={ target, t:10, acc:0 };
+      game.healFx=0.5;
+      addFloat(player.x, player.y-26, target? "飘向 "+target.skin.name+" 治疗" : "自我治疗 10 秒","#7cfc9b");
+    }
+  }
+  let lastSkillTxt="";
+  function updateSkillHud(){
+    const ch=CHARS[game.char];
+    let txt;
+    if (game.reviveChan) txt="复活中 "+Math.ceil(game.reviveChan.t)+"s";
+    else if (game.healChan) txt="治疗中 "+Math.ceil(game.healChan.t)+"s";
+    else if (game.char==="huang" && game.skillT>0)
+      txt="滚动 +12 ·可撞鬼";
+    else
+      txt=ch.skill.name+(game.skillCd>0?" "+Math.ceil(game.skillCd)+"s":" ·就绪");
+    if (txt!==lastSkillTxt){ lastSkillTxt=txt; document.getElementById("skill").textContent=txt; }
+  }
+  function updateCharSkill(){
+    const ch=CHARS[game.char];
+    document.getElementById("charSkill").textContent="技能 "+ch.skill.name+"："+ch.skill.desc+"（J 键释放）";
+  }
+  function hurt(t, amount){   // 通用扣血：t=玩家或队友，一次 20
+    if (t===player){
+      if (player.invuln>0) return false;
+      player.invuln=0.6;
+      game.hp=Math.max(0, game.hp-amount); updateHud();
+      addFloat(player.x, player.y-26, "-"+amount, "#ff5a7a");
+      if (game.hp<=0){
+        dropBelly(player.x, player.y, game.belly);
+        bankGems();
+        for (let i=0;i<invSlots.length;i++) invSlots[i]=null;   // 被打死：包里东西全掉光
+        equipped=null; renderInv();
+        game.state=STATE.DEAD;                                   // 阵亡观战：等人机复活或跳过
+        game.spectate=0; game.potReviveT=0;
+        showSpectate();
+        addFloat(player.x, player.y-26, "你阵亡了…", "#ff8888");
+      }
+      return true;
+    }
+    if (t.hitCd>0 || t.hp<=0) return false;
+    t.hitCd=0.5; t.hp-=amount; addFloat(t.x,t.y-20,"-"+amount,"#ff5a7a");
+    if (t.hp<=0){
+      if (t.hasHarpoon){ drops.push({x:t.x,y:t.y,type:"harpoon"}); t.hasHarpoon=false; }   // 被打死鱼叉掉落
+      dropBelly(t.x,t.y,t.belly); t.dead=true;   // 永久阵亡，少一个队友
+      addFloat(t.x, t.y-22, t.skin.name+" 阵亡了", "#ff8888");
+    }
+    return true;
+  }
+
+  // ===== 更新 =====
+  function update(dt) {
+    if (game.state!==STATE.PLAYING && game.state!==STATE.DEAD) return;
+    game.time+=dt;
+    const cfg=game.cfg;
+    const ch=CHARS[game.char];
+
+    // 技能计时
+    if (game.skillCd>0) game.skillCd-=dt;
+    if (game.skillT>0) game.skillT-=dt;
+    if (game.scareFx>0) game.scareFx-=dt;
+    if (game.eatT>0) game.eatT-=dt;
+    if (game.healFx>0) game.healFx-=dt;
+    if (game.state!==STATE.PLAYING){ game.healChan=null; game.reviveChan=null; }
+
+    // 开场阶段：18 秒后开门，进入大门才开始寻宝
+    if (game.state===STATE.PLAYING && !game.huntStarted){
+      if (game.time>=18){
+        if (player.y < GATE_ROW*TILE){                 // 玩家已进大门
+          game.enterT+=dt;
+          const allIn = bots.every(b=>b.dead || b.y < GATE_ROW*TILE);
+          if (allIn || game.enterT>=6) startHunt();
+        }
+      }
+    }
+    // 超市购物车触发：玩家推车或坐上人机的车 → 全员开始推车；靠近人机的车自动坐上
+    if (game.theme.cart && !game.huntStarted){
+      if (!game.cartPush && !game.ridingCart){
+        for (const c of carts){   // 靠近空车自动推起
+          if (!c.pusher && Math.hypot(player.x-c.x, player.y-c.y)<30){
+            game.cartPush=true; c.pusher="player"; game.cart=c;
+            addFloat(player.x, player.y-26, "推起购物车！加速", "#9ecbff");
+            break;
+          }
+        }
+      }
+      if (!game.cartMode && (game.cartPush || game.ridingCart)){
+        game.cartMode=true;
+        addFloat(player.x, player.y-26, "全员推车出发！", "#ffd76a");
+      }
+      if (game.cartMode){
+        for (const b of bots){
+          if (b.dead || b.riding || b.cart) continue;
+          for (const c of carts){   // 队友只推自己的车，不会坐上玩家的车
+            if (!c.pusher && Math.hypot(b.x-c.x, b.y-c.y)<110){ c.pusher=b; b.cart=c; break; }
+          }
+        }
+      }
+    }
+    // 购物车位置跟随推车者（不能进超市；过门/开怪时放下）
+    for (const c of carts){
+      if (!c.pusher) continue;
+      const p = c.pusher==="player" ? player : c.pusher;
+      let nx = p.x + (p.face>0?34:-34), ny = p.y + 6;
+      if (ny < GATE_ROW*TILE) ny = GATE_ROW*TILE;
+      if (game.huntStarted || p.y < GATE_ROW*TILE-16 || (c.pusher!=="player" && c.pusher.dead)){ releaseCart(c); continue; }
+      c.x=nx; c.y=ny; c.face=p.face;
+      if (c.rider==="player"){ player.x=nx; player.y=ny-4; }
+      else if (c.rider){ c.rider.x=nx; c.rider.y=ny-2; }
+    }
+    // 进门鉴：开合计时 + 3 秒引导
+    if (gates.main.openT>0) gates.main.openT-=dt;
+    if (gates.side.openT>0) gates.side.openT-=dt;
+    if (game.gateChan){
+      const gc=game.gateChan;
+      gc.t-=dt;
+      if (gc.t<=0){
+        gates[gc.gate].openT=6;
+        addFloat(gc.gx, (gc.gy||GATE_ROW*TILE-16)+4, "门开了！快进", "#ffd76a");
+        game.gateChan=null;
+      }
+    }
+
+    if (game.state===STATE.PLAYING){   // 只有活着才能操控
+      const SPEED=158;
+      let sp=SPEED*(ch.speedMul||1);
+      if (game.cartPush) sp*=1.35;                       // 推购物车走得快
+      if (game.char==="huang" && game.skillT>0){
+        sp+=12;                              // 滚动：速度 +12（仅 1 秒）
+        game.rollAngle+=sp*dt*0.02;          // 翻滚旋转
+      } else {
+        game.rollAngle*=0.85;                // 停止滚动后缓停
+      }
+      let dx=0, dy=0;
+      if (keys["a"]||keys["arrowleft"]) dx-=1;
+      if (keys["d"]||keys["arrowright"]) dx+=1;
+      if (keys["w"]||keys["arrowup"]) dy-=1;
+      if (keys["s"]||keys["arrowdown"]) dy+=1;
+      if ((game.healChan && game.healChan.target) || game.reviveChan || (game.gateChan && game.gateChan.by==="player") || game.ridingCart){ dx=0; dy=0; }   // 引导/本人刷卡/乘车时不能动
+      if (dx||dy){ const m=Math.hypot(dx,dy); dx/=m; dy/=m; if(dx) player.face=dx>0?1:-1; }
+      const nx=player.x+dx*sp*dt;
+      if (!hitsWall(nx, player.y, player.r)) player.x=nx;
+      const ny=player.y+dy*sp*dt;
+      if (!hitsWall(player.x, ny, player.r)) player.y=ny;
+      player.x=Math.max(player.r, Math.min(W-player.r, player.x));
+      player.y=Math.max(player.r, Math.min(H_TOT-player.r, player.y));
+    }
+
+    // 下水道（超市专属）：18 秒后靠近井盖爬下去；走廊里可爬回；门开走进 → 潜入超市
+    if (game.theme.cart && !game.huntStarted && game.time>=18){
+      if (!game.inSewer){
+        if (Math.hypot(player.x-SEWER_EX, player.y-(H+OUTER-26))<44){
+          game.inSewer=true;
+          if (game.cartPush) releaseCart(game.cart);          // 下水道推不了车
+          player.x=SEWER_EX-40; player.y=SEWER_Y+SEWER/2;    // 落到井盖左侧，避免立刻触发爬回
+          addFloat(player.x, player.y-26, "爬进下水道", "#9ecbff");
+        }
+      } else {
+        if (Math.abs(player.x-SEWER_EX)<20 && player.y < SEWER_Y+26){   // 走回井盖正下方 → 爬回去
+          game.inSewer=false;
+          player.x=SEWER_EX; player.y=H+OUTER-26;
+          addFloat(player.x, player.y-26, "爬出下水道", "#9ecbff");
+        } else if (gates.sewer.openT>0 && player.x < SEWER_DOOR_X-10){  // 门开了，走进 → 潜入超市
+          game.inSewer=false;
+          player.x=GATE_COL*TILE+TILE/2; player.y=GATE_ROW*TILE-40;
+          addFloat(player.x, player.y-26, "从下水道潜入超市！", "#9ecbff");
+        }
+      }
+    }
+
+    if (player.invuln>0) player.invuln-=dt;
+
+    // 治疗引导：每秒 +6，团队模式飘到队友身边定住
+    if (game.healChan){
+      const ch=game.healChan;
+      ch.t-=dt; ch.acc+=dt;
+      if (ch.target){
+        const dx2=ch.target.x-player.x, dy2=ch.target.y-player.y, dd=Math.hypot(dx2,dy2);
+        if (dd>46){                     // 飘向队友：无视墙体直接穿过去
+          const sp=90;
+          player.x+=dx2/dd*sp*dt;
+          player.y+=dy2/dd*sp*dt;
+        }
+      }
+      while (ch.acc>=1){
+        ch.acc-=1;
+        if (game.hp<100){ game.hp=Math.min(100,game.hp+6); updateHud(); }
+        if (ch.target && ch.target.hp>0 && ch.target.hp<100) ch.target.hp=Math.min(100,ch.target.hp+6);
+        addFloat(player.x, player.y-26, "+6", "#7cfc9b");
+      }
+      if (ch.t<=0){ game.healChan=null; game.healFx=0.5; addFloat(player.x,player.y-26,"治疗结束","#7cfc9b"); }
+    }
+
+    // 复活引导：站桩 5 秒，靠近尸体；小幽灵来了立刻中断保命
+    if (game.reviveChan){
+      const rc=game.reviveChan;
+      rc.t-=dt;
+      let threat=false;
+      for (const m of monsters){ if (Math.hypot(m.x-player.x,m.y-player.y)<160){ threat=true; break; } }
+      if (threat){
+        game.reviveChan=null;
+        addFloat(player.x, player.y-26, "小幽灵来了，复活中断！", "#ff8888");
+      } else if (Math.hypot(player.x-rc.target.x, player.y-rc.target.y)>56){
+        game.reviveChan=null;
+        addFloat(player.x, player.y-26, "离开尸体，复活中断", "#ff8888");
+      } else if (rc.t<=0){
+        const b=rc.target;
+        b.dead=false; b.hp=50; b.hasHarpoon=false; b.belly=[]; b.cd=20+Math.random()*15;   // 复活后只剩 50 血
+        game.reviveChan=null;
+        addFloat(player.x, player.y-26, b.skin.name+" 复活了（50 血）", "#7cfc9b");
+      }
+    }
+
+    for (const m of monsters) {
+      // 选目标：落单的队友优先（离玩家 > 150 视为落单）
+      let tx=player.x, ty=player.y;
+      let td=Math.hypot(player.x-m.x, player.y-m.y), targetBot=null;
+      for (const b of bots){
+        if (b.dead) continue;
+        const d=Math.hypot(b.x-m.x, b.y-m.y);
+        if (d<td && Math.hypot(b.x-player.x,b.y-player.y)>150){ td=d; tx=b.x; ty=b.y; targetBot=b; }
+      }
+      // 找最近的活体（玩家或队友）：喷火只针对靠近的人，不乱喷
+      let ne={x:player.x,y:player.y}, nd=Math.hypot(player.x-m.x,player.y-m.y);
+      for (const b of bots){
+        if (b.dead) continue;
+        const d=Math.hypot(b.x-m.x,b.y-m.y);
+        if (d<nd){ nd=d; ne={x:b.x,y:b.y}; }
+      }
+      // 小幽灵虚弱循环：追击 → 停住喷火0.5秒 → 僵3秒 → 恢复追击
+      // 傀儡蛋：不喷火，缓慢贴身追击，碰到才扣血
+      if (m.stun>0){
+        m.stun-=dt;
+      } else if (m.type==="ghost" && m.state==="spit"){
+        m.timer-=dt;
+        if (Math.random()<dt*8) spawnFire(m, ne.x, ne.y);        // 边停边喷
+        if (m.timer<=0){ m.state="rest"; m.timer=3; }
+      } else if (m.type==="ghost" && m.state==="rest"){
+        m.timer-=dt;
+        if (m.timer<=0){ m.state="chase"; m.timer=0; }
+      } else {
+        if (td<cfg.detect && td>0.1){
+          const spd = m.type==="puppet" ? cfg.chase*0.62 : cfg.chase;   // 傀儡蛋慢一截
+          const vx=(tx-m.x)/td*spd*dt, vy=(ty-m.y)/td*spd*dt;
+          const nx=m.x+vx, ny=m.y+vy;
+          const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
+          if (okX) m.x=nx; if (okY) m.y=ny;
+          if (!okX && !okY){ m.angle=Math.random()*Math.PI*2; m.wanderT=0.5+Math.random()*0.5; }   // 撞墙：绕路
+          if (m.type==="ghost" && nd<170){ m.state="spit"; m.timer=0.5; }   // 小幽灵靠近才站桩喷火
+        } else if (m.wanderT>0){     // 绕路中：沿随机方向走一段
+          m.wanderT-=dt;
+          const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
+          if (!hitsWall(nx, m.y, m.r)) m.x=nx;
+          if (!hitsWall(m.x, ny, m.r)) m.y=ny;
+        } else {
+          m.wt-=dt;
+          if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=0.8+Math.random()*1.4; }
+          const nx=m.x+Math.cos(m.angle)*cfg.wander*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*dt;
+          if (!hitsWall(nx, m.y, m.r)) m.x=nx;
+          if (!hitsWall(m.x, ny, m.r)) m.y=ny;
+        }
+      }
+      m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
+      if (m.flash>0) m.flash-=dt;
+      // 近战撞到玩家：滚动可撞飞、毛哆哆张嘴可吃；傀儡蛋贴脸会扣血
+      if (Math.hypot(player.x-m.x,player.y-m.y)<player.r+m.r){
+        if (game.char==="huang" && game.skillT>0){
+          // 滚动撞飞：只弹开，不掉血不眩晕
+          const ang=Math.atan2(m.y-player.y, m.x-player.x);
+          m.x=Math.max(m.r,Math.min(W-m.r, player.x+Math.cos(ang)*160));
+          m.y=Math.max(m.r,Math.min(H-m.r, player.y+Math.sin(ang)*160));
+          m.stun=0; m.flash=0.35;
+        } else if (game.char==="duoduo" && game.eatT>0){
+          eatGhost(player, m, game.belly);   // 张嘴状态：碰到就吃
+        } else if (m.type==="puppet" && player.invuln<=0){
+          hurt(player, 20);   // 傀儡蛋：贴脸 -20 血
+        }
+      }
+    }
+
+    if (game.state===STATE.PLAYING) updateBots(dt);
+    else updateRescue(dt);
+    monsters=monsters.filter(m=>!m.dead);   // 清理被吃掉的幽灵
+
+    if (game.state===STATE.PLAYING){   // 玩家拾取/胜利只在活着时
+      for (const g of gems){
+        if (g.taken) continue;
+        if (Math.hypot(player.x-g.x, player.y-g.y) < player.r+g.r){
+          g.taken=true; game.gems++; updateHud();
+          if (game.char==="duoduo") game.belly.push({type:"gem", t:15});  // 毛哆哆吃下的宝石会随死亡掉落
+        }
+      }
+      // 捡地上的掉落物（鱼叉/返魂药水）
+      for (let i=drops.length-1;i>=0;i--){
+        const dp=drops[i];
+        if (Math.hypot(dp.x-player.x,dp.y-player.y)<26){
+          if (dp.type==="harpoon" && hasItem("harpoon")){ addFloat(player.x,player.y-26,"已有一把鱼叉","#9ecbff"); break; }
+          const where=addItem(dp.type); drops.splice(i,1);
+          addFloat(player.x,player.y-26, where? "捡起"+itemName(dp.type)+"（"+where+"）" : "背包满了","#9ecbff");
+          break;
+        }
+      }
+      if (Math.hypot(player.x-treasure.x, player.y-treasure.y) < player.r+16){
+        game.state=STATE.WIN;
+        game.winner="你亲手打开了宝箱";
+        showOverlay("全队胜利！", game.winner+"<br>宝石 "+game.gems+" · 用时 "+Math.floor(game.time)+" 秒 · 剩余生命 "+game.hp,"再玩一次",true);
+      }
+    }
+    // 小狗跟随
+    if (puppy){
+      const tx=player.x-30, ty=player.y+16+Math.sin(game.time*2+puppy.wob)*8;
+      const dx=tx-puppy.x, dy=ty-puppy.y, d=Math.hypot(dx,dy);
+      if (d>6){
+        if (Math.abs(dx)>2) puppy.face=dx>0?1:-1;
+        const sp=110;
+        if (!hitsWall(puppy.x+dx/d*sp*dt,puppy.y,9)) puppy.x+=dx/d*sp*dt;
+        if (!hitsWall(puppy.x,puppy.y+dy/d*sp*dt,9)) puppy.y+=dy/d*sp*dt;
+      }
+      puppy.x=Math.max(9,Math.min(W-9,puppy.x));
+      puppy.y=Math.max(9,Math.min(H_TOT-9,puppy.y));
+      puppy.wag+=dt;
+    }
+
+    // 鱼叉挥砍特效计时
+    if (game.swingFx>0) game.swingFx-=dt;
+    // 扔出的物品飞行：命中-1、撞墙/飞远落地变回掉落
+    for (let i=throwns.length-1;i>=0;i--){
+      const th=throwns[i];
+      th.x+=th.vx*dt; th.y+=th.vy*dt; th.t+=dt;
+      let done = th.t>th.life || hitsWall(th.x,th.y,4);
+      for (const m of monsters){
+        if (Math.hypot(m.x-th.x,m.y-th.y)<m.r+6){
+          m.hp--; m.flash=0.3;
+          addFloat(m.x,m.y-18,"命中 -1","#ffd76a");
+          if (m.hp<=0){ monsters=monsters.filter(x=>x!==m); game.gems+=10; updateHud(); addFloat(m.x,m.y-18,"击杀 +10","#5be0ff"); }
+          done=true; break;
+        }
+      }
+      if (done){ drops.push({ x:th.x, y:th.y, type:th.item.type }); throwns.splice(i,1); }
+    }
+    // 小火焰：飞行→落地成火堆，靠近/在火里 -20，一团只伤一个人一次
+    for (let i=fires.length-1;i>=0;i--){
+      const f=fires[i];
+      if (!f.landed){
+        f.x+=f.vx*dt; f.y+=f.vy*dt; f.t+=dt;
+        if (f.t>0.55 || hitsWall(f.x,f.y,4)){ f.landed=true; f.t=0; }
+      } else f.t+=dt;
+      f.life-=dt;
+      if (f.life<=0){ fires.splice(i,1); continue; }
+      if (f.active){
+        const cands=[];
+        if (player.invuln<=0 && game.state===STATE.PLAYING) cands.push(player);
+        for (const b of bots){ if (!b.dead && b.hitCd<=0 && b.hp>0) cands.push(b); }
+        cands.sort((a,b)=>Math.hypot(a.x-f.x,a.y-f.y)-Math.hypot(b.x-f.x,b.y-f.y));
+        for (const c of cands){
+          if (Math.hypot(c.x-f.x,c.y-f.y)<28 && hurt(c,20)){ f.active=false; break; }
+        }
+      }
+    }
+
+    for (const f of floaters){ f.y-=f.sp*dt; if (f.y<-4){ f.y=H+4; f.x=Math.random()*W; } }
+    // 冒字提示
+    for (let i=floatTexts.length-1;i>=0;i--){ const f=floatTexts[i]; f.t-=dt; f.y-=22*dt; if(f.t<=0) floatTexts.splice(i,1); }
+    // 点亮光源计时
+    for (let i=lights.length-1;i>=0;i--){ lights[i].t-=dt; if(lights[i].t<=0) lights.splice(i,1); }
+    // 毛哆哆肚子消化：15 秒后吐在原地
+    for (let i=game.belly.length-1;i>=0;i--){
+      const it=game.belly[i]; it.t-=dt;
+      if (it.t<=0){ spitItem(player, it); game.belly.splice(i,1); }
+    }
+  }
+
+  // ===== AI 队友 =====
+  function updateBots(dt){
+    for (const b of bots){
+      if (b.dead) continue;   // 永久阵亡，不再行动
+      // 计时
+      if (b.cd>0) b.cd-=dt;
+      if (b.invuln>0) b.invuln-=dt;
+      if (b.roll>0) b.roll-=dt;
+      if (b.boost>0) b.boost-=dt;
+      if (b.eatT>0) b.eatT-=dt;
+      if (b.hitCd>0) b.hitCd-=dt;
+
+      // 目标点：开场跟着玩家（超市：等玩家推车后再动）；开怪后按模式走
+      let tx, ty;
+      if (b.riding){ tx=b.x; ty=b.y; }                       // 坐车上：车带着走
+      else if (!game.huntStarted){
+        if (!game.carOpen){ tx=b.x; ty=b.y; }                // 车门没开：在车里等
+        else if (b.mode==="follow"){ tx=player.x+b.fx; ty=player.y+26; }   // 你让它跟随
+        else {                                               // 自由意志：自己选大门/侧门走
+          const gp = (b.gatePref==="side" && game.theme.sideDoor) ? (COLS-1)*TILE+TILE/2 : GATE_COL*TILE+TILE/2;
+          tx=gp; ty=GATE_ROW*TILE+TILE/2-10;
+        }
+      }
+      else if (b.mode==="follow"){ tx=player.x+b.fx; ty=player.y+26; }
+      else {
+        let best=null, bd=1e9;
+        for (const g of gems){ if(g.taken) continue; const d=Math.hypot(g.x-b.x,g.y-b.y); if(d<bd){bd=d;best=g;} }
+        if (best){ tx=best.x; ty=best.y; }
+        else if (chestState==="intact"){ tx=treasure.x; ty=treasure.y; }
+        else { tx=player.x+b.fx*0.5; ty=player.y+20; }   // 宝箱被吞了：先归队保护
+      }
+      // 附近有幽灵就逃跑
+      let fg=null, fd=1e9;
+      for (const m of monsters){ const d=Math.hypot(m.x-b.x,m.y-b.y); if(d<fd){fd=d;fg=m;} }
+      const threatened=fg && fd<100;
+      if (fg && fd<110){ tx=b.x+(b.x-fg.x)*2; ty=b.y+(b.y-fg.y)*2; }
+      // 轻微游走（自由模式幅度小；乘车/刷卡时不动）
+      const wobA=b.mode==="follow"?14:6;
+      const chanStand = game.gateChan && game.gateChan.bot===b;
+      if (!b.riding && !chanStand){
+        tx+=Math.sin(game.time*1.7+b.wob)*wobA;
+        ty+=Math.cos(game.time*1.3+b.wob)*wobA;
+      }
+      // 进门鉴：人机自动刷卡（靠近门口就验证 3 秒开门）
+      if (!game.gateChan && !game.huntStarted && !b.riding){
+        const spots=[[GATE_COL*TILE+TILE/2,"main"],[(COLS-1)*TILE+TILE/2,"side"]];
+        for (const [gx,gn] of spots){
+          if (gn==="side" && !game.theme.sideDoor) continue;
+          if (gates[gn].openT>0) continue;
+          if (Math.hypot(b.x-gx, b.y-(GATE_ROW*TILE+TILE/2))<64){
+            game.gateChan={ gate:gn, t:3, by:"bot", bot:b, gx };
+            addFloat(gx, GATE_ROW*TILE-14, "进门鉴验证中…", "#9ecbff");
+            break;
+          }
+        }
+      }
+      // 人机队友放技能：蛋小绿技能好了必给玩家治疗；其余按威胁/随机
+      if (b.cd<=0 && (b.skin===CHARS.lv || threatened || fd<70 || Math.random()<0.004)){
+        b.cd=40;
+        addFloat(b.x, b.y-24, b.skin.skill.name+"！", "#ffd76a");
+        if (b.skin===CHARS.puff) lights.push({ e:b, t:8, r:190 });  // 点亮
+        else if (b.skin===CHARS.duoduo) b.eatT=b.skin.skill.dur;    // 吃：张嘴
+        else if (b.skin===CHARS.huang) b.roll=1;            // 滚动
+        else if (b.skin===CHARS.lv){                        // 治疗：百分百给玩家回血
+          if (game.hp<100){ game.hp=Math.min(100,game.hp+20); updateHud(); game.healFx=0.5; addFloat(player.x,player.y-26,"治疗 +20","#7cfc9b"); }
+          else addFloat(player.x,player.y-26,"血量已满","#9ecbff");
+        }
+      }
+      const dx=tx-b.x, dy=ty-b.y, d=Math.hypot(dx,dy);
+      let sp=(fg&&fd<110)?125:95;
+      if (b.boost>0) sp*=1.5;
+      if (b.roll>0){ sp+=12; b.rAng+=sp*dt*0.02; } else b.rAng*=0.85;
+      if (!b.riding && !chanStand && d>4){
+        // 主动绕墙：撞墙就沿切向绕行一段
+        let ang=Math.atan2(dy,dx);
+        if (b.detour>0){ b.detour-=dt; ang+=b.detourDir*Math.PI/2; }
+        const mvx=Math.cos(ang)*sp*dt, mvy=Math.sin(ang)*sp*dt;
+        let blocked=false;
+        if (!hitsWall(b.x+mvx,b.y,b.r)) b.x+=mvx; else blocked=true;
+        if (!hitsWall(b.x,b.y+mvy,b.r)) b.y+=mvy; else blocked=true;
+        if (blocked && b.detour<=0){ b.detour=0.5+Math.random()*0.5; b.detourDir=Math.random()<0.5?1:-1; }
+        if (Math.abs(Math.cos(ang))>0.25) b.face=Math.cos(ang)>0?1:-1;
+        b.x=Math.max(b.r, Math.min(W-b.r, b.x));
+        b.y=Math.max(b.r, Math.min(H_TOT-b.r, b.y));
+      }
+      // 人机鱼叉：捡地上的 / 自动攻击附近小幽灵 / 必要时送给玩家
+      if (b.atkCd>0) b.atkCd-=dt;
+      if (b.atkFx>0) b.atkFx-=dt;
+      if (!b.hasHarpoon){
+        for (let i=drops.length-1;i>=0;i--){
+          if (drops[i].type!=="harpoon") continue;   // 人机只捡鱼叉
+          if (Math.hypot(drops[i].x-b.x,drops[i].y-b.y)<24){
+            b.hasHarpoon=true; drops.splice(i,1);
+            addFloat(b.x,b.y-20,"捡起鱼叉","#9ecbff");
+            break;
+          }
+        }
+      } else if (b.atkCd<=0){
+        let target=null, t2=80;                     // 人机鱼叉：优先打近处小幽灵
+        for (const m of monsters){
+          const d=Math.hypot(m.x-b.x,m.y-b.y);
+          if (d<t2){ t2=d; target=m; }
+        }
+        if (target){
+          b.atkCd=1.0; b.atkFx=0.25;
+          target.hp--; target.flash=0.3;
+          addFloat(target.x,target.y-18,"鱼叉 -1","#ffd76a");
+          if (target.hp<=0){
+            monsters=monsters.filter(x=>x!==target);
+            game.gems+=5; updateHud();
+            addFloat(target.x,target.y-18,"队友击杀 +5","#5be0ff");
+          }
+        }
+      }
+      // 玩家没武器时，带叉的人机可能把鱼叉给玩家（人机鱼叉无限，给了自己还有）
+      if (b.hasHarpoon && !hasItem("harpoon") && Math.hypot(b.x-player.x,b.y-player.y)<140 && Math.random()<0.015){
+        addItem("harpoon");
+        addFloat(player.x,player.y-26,b.skin.name+" 把鱼叉给了你","#9ecbff");
+      }
+      // 帮忙捡宝石（毛哆哆吃下的会随死亡掉落）
+      for (const g of gems){
+        if (!g.taken && Math.hypot(b.x-g.x,b.y-g.y)<b.r+g.r){
+          g.taken=true; game.gems++; updateHud();
+          if (b.skin===CHARS.duoduo) b.belly.push({type:"gem", t:15});
+        }
+      }
+      // 队友摸到宝箱：毛哆哆有小概率吃掉，其他队友直接打开 → 全队胜利
+      if (game.huntStarted && chestState==="intact" && Math.hypot(b.x-treasure.x,b.y-treasure.y)<b.r+16){
+        if (b.skin===CHARS.duoduo && Math.random()<0.12){
+          chestState="carried"; chestCarrier=b;
+          b.belly.push({type:"chest", t:15});
+          addFloat(b.x,b.y-24,"吃掉宝箱！","#ffd76a");
+        } else {
+          openChest(b.skin.name+" 打开了宝箱");
+          return;
+        }
+      }
+      // 毛哆哆肚子消化：15 秒后吐在原地
+      for (let i=b.belly.length-1;i>=0;i--){
+        const it=b.belly[i]; it.t-=dt;
+        if (it.t<=0){ spitItem(b, it); b.belly.splice(i,1); }
+      }
+      // 与怪物碰撞：滚动撞飞 / 张嘴就吃；傀儡蛋贴脸扣血（小幽灵近战无伤）
+      for (const m of monsters){
+        if (Math.hypot(m.x-b.x,m.y-b.y)<b.r+m.r){
+          if (b.roll>0){
+            const ang=Math.atan2(m.y-b.y,m.x-b.x);
+            m.x=Math.max(m.r,Math.min(W-m.r,b.x+Math.cos(ang)*160));
+            m.y=Math.max(m.r,Math.min(H-m.r,b.y+Math.sin(ang)*160));
+            m.stun=0; m.flash=0.35;
+          } else if (b.skin===CHARS.duoduo && b.eatT>0){
+            eatGhost(b, m, b.belly);
+          } else if (m.type==="puppet"){
+            hurt(b, 20);   // 傀儡蛋：贴脸 -20 血
+          }
+        }
+      }
+    }
+  }
+
+  // ===== 阵亡观战 & 人机救援 =====
+  function aliveBots(){ return bots.filter(b=>!b.dead); }
+  function updateSpecName(){
+    const ab=aliveBots();
+    if (!ab.length){ document.getElementById("specName").textContent="观看：无队友"; return; }
+    const b=ab[Math.min(game.spectate, ab.length-1)];
+    document.getElementById("specName").textContent="观看："+b.skin.name;
+  }
+  function setSpectateUI(){
+    const s=document.getElementById("spectate");
+    const show = game.state===STATE.PLAYING || game.state===STATE.PAUSED || game.state===STATE.DEAD;
+    s.style.display = show ? "block" : "none";
+    const dead = game.state===STATE.DEAD;
+    document.querySelectorAll("#spectate .spec-bar, #spectate .spec-hint").forEach(el=>el.style.display = dead ? "" : "none");
+    if (dead) updateSpecName();
+    document.getElementById("specX").title = dead ? "开始下一局" : "退出本局";
+  }
+  function showSpectate(){ setSpectateUI(); }
+  function hideSpectate(){ setSpectateUI(); }
+  function cycleSpectate(dir){
+    const ab=aliveBots(); if (!ab.length) return;
+    game.spectate=(game.spectate+dir+ab.length)%ab.length;
+    updateSpecName();
+  }
+  function quitToMenu(){   // 游戏中点 ✕：退出本局回主菜单（宝石先入账）
+    bankGems();
+    finishRound();
+    game.state=STATE.MENU;
+    setSpectateUI();
+    showOverlay("蛋仔惊魂寻宝队","","开始冒险",true);
+  }
+  document.getElementById("specX").addEventListener("click", ()=>{
+    if (game.state===STATE.DEAD){ finishRound(); newGame(); }                // 阵亡：直接开始下一局
+    else if (game.state===STATE.PLAYING || game.state===STATE.PAUSED) quitToMenu();  // 游戏中：退出
+  });
+  document.getElementById("specLeft").addEventListener("click", ()=>cycleSpectate(-1));
+  document.getElementById("specRight").addEventListener("click", ()=>cycleSpectate(1));
+
+  function updateRescue(dt){   // 玩家阵亡后：人机一起赶到尸体旁，用返魂药水救玩家
+    if (game.potReviveT>0){
+      game.potReviveT-=dt;
+      let threat=false;
+      for (const m of monsters){ if (Math.hypot(m.x-player.x,m.y-player.y)<160){ threat=true; break; } }
+      if (threat){ game.potReviveT=0; addFloat(player.x,player.y-20,"复活被小幽灵打断","#ff8888"); }
+      else if (game.potReviveT<=0){
+        game.state=STATE.PLAYING;
+        game.hp=50; player.invuln=1.2;
+        hideSpectate();
+        addFloat(player.x, player.y-26, "你复活了（50 血）", "#7cfc9b");
+      }
+      return;
+    }
+    let reviver=null, rd=1e9;
+    for (const b of bots){
+      if (b.dead) continue;
+      const dx=player.x-b.x, dy=player.y-b.y, d=Math.hypot(dx,dy);
+      if (d>44){                     // 都往尸体走
+        if (Math.abs(dx)>2) b.face=dx>0?1:-1;
+        const sp=100;
+        if (!hitsWall(b.x+dx/d*sp*dt,b.y,b.r)) b.x+=dx/d*sp*dt;
+        if (!hitsWall(b.x,b.y+dy/d*sp*dt,b.r)) b.y+=dy/d*sp*dt;
+      }
+      if (b.potions>0 && d<rd){ rd=d; reviver=b; }
+    }
+    if (reviver && rd<50){
+      reviver.potions--;
+      game.potReviveT=5;
+      addFloat(player.x, player.y-20, "正在复活你…", "#7cfc9b");
+    }
+  }
+
+  // ===== 鱼叉（武器：装备在快捷栏即可无限挥砍）=====
+  function throwHarpoon(){
+    if (game.state!==STATE.PLAYING) return;
+    const held = equipped!=null && invSlots[equipped] && invSlots[equipped].type==="harpoon";
+    if (!held){ addFloat(player.x,player.y-26,"先装备鱼叉（点击快捷栏）","#ff8888"); return; }
+    game.swingFx=0.3;
+    let hitAny=false;
+    for (let i=monsters.length-1;i>=0;i--){
+      const m=monsters[i];
+      if (Math.hypot(m.x-player.x,m.y-player.y) < player.r+m.r+46){   // 近战范围
+        hitAny=true;
+        m.hp--; m.flash=0.3;
+        addFloat(m.x,m.y-18,"小幽灵 -1","#ffd76a");
+        if (m.hp<=0){
+          monsters.splice(i,1);
+          game.gems+=10; updateHud();
+          addFloat(m.x,m.y-18,"击杀 +10","#5be0ff");
+        }
+      }
+    }
+    if (!hitAny) addFloat(player.x,player.y-26,"太远了！","#ff8888");
+  }
+  function useEquipped(){   // U 键：使用快捷栏装备的物品（返魂药水等）
+    if (game.state!==STATE.PLAYING) return;
+    if (equipped==null || !invSlots[equipped]){ addFloat(player.x,player.y-26,"没有装备物品","#ff8888"); return; }
+    const item=invSlots[equipped];
+    if (item.type==="revive"){
+      const dead=bots.find(b=>b.dead);
+      if (!dead){ addFloat(player.x,player.y-26,"没有阵亡的队友","#ff8888"); return; }
+      if (Math.hypot(player.x-dead.x, player.y-dead.y)>46){ addFloat(player.x,player.y-26,"靠近队友尸体再使用","#ff8888"); return; }
+      if (game.reviveChan) return;
+      invSlots[equipped]=null; equipped=null; renderInv();
+      game.reviveChan={ target:dead, t:5 };
+      addFloat(player.x, player.y-26, "正在复活 "+dead.skin.name+"…", "#7cfc9b");
+      return;
+    }
+    addFloat(player.x, player.y-26, "这个物品不能使用", "#ff8888");
+  }
+  function throwEquipped(){   // T 键：把手上的物品扔出去（落地变回可捡掉落）
+    if (game.state!==STATE.PLAYING) return;
+    if (equipped==null || !invSlots[equipped]){ addFloat(player.x,player.y-26,"手上没有东西","#ff8888"); return; }
+    const item=invSlots[equipped];
+    invSlots[equipped]=null; equipped=null; renderInv();
+    let ang;
+    if (mouse.seen){
+      const rect=canvas.getBoundingClientRect();
+      const mx=(mouse.x-rect.left)*(W/rect.width), my=(mouse.y-rect.top)*(H/rect.height);
+      ang=Math.atan2(my-player.y, mx-player.x);
+    } else ang = player.face>0 ? 0 : Math.PI;
+    throwns.push({ x:player.x, y:player.y, vx:Math.cos(ang)*480, vy:Math.sin(ang)*480, ang, item, t:0, life:1.2 });
+    addFloat(player.x, player.y-26, "扔出鱼叉", "#9ecbff");
+  }
+  function dropHarpoon(){   // G 键：把手上（快捷栏已装备）的鱼叉放下给队友/地上
+    if (game.state!==STATE.PLAYING) return;
+    const held = equipped!=null && invSlots[equipped] && invSlots[equipped].type==="harpoon";
+    if (!held){ addFloat(player.x,player.y-26,"先装备鱼叉（点击快捷栏）","#ff8888"); return; }
+    invSlots[equipped]=null; equipped=null; renderInv();
+    drops.push({ x:player.x, y:player.y, type:"harpoon" });
+    addFloat(player.x, player.y-26, "放下了鱼叉", "#9ecbff");
+  }
+
+  // ===== 渲染 =====
+  function drawTile(r,c){
+    const x=c*TILE, y=r*TILE, th=game.theme;
+    if (grid[r][c]===CELL.WALL){
+      ctx.fillStyle=th.wall; ctx.fillRect(x,y,TILE,TILE);
+      ctx.fillStyle=th.wallTop; ctx.fillRect(x+3,y+3,TILE-6,TILE-10);
+      if (th.wallStyle==="shelf"){
+        ctx.strokeStyle="rgba(0,0,0,.28)"; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(x+5,y+TILE/2); ctx.lineTo(x+TILE-5,y+TILE/2); ctx.stroke();
+        ctx.fillStyle=th.accent; ctx.fillRect(x+TILE-15,y+6,8,5);
+      } else if (th.wallStyle==="bars"){
+        ctx.strokeStyle="rgba(255,255,255,.18)"; ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(x+TILE*0.36,y+5); ctx.lineTo(x+TILE*0.36,y+TILE-8);
+        ctx.moveTo(x+TILE*0.64,y+5); ctx.lineTo(x+TILE*0.64,y+TILE-8);
+        ctx.stroke();
+      }
+    } else {
+      ctx.fillStyle=th.ground; ctx.fillRect(x,y,TILE,TILE);
+      ctx.strokeStyle="rgba(255,255,255,.04)"; ctx.strokeRect(x+0.5,y+0.5,TILE-1,TILE-1);
+    }
+  }
+
+  function drawEgg(x, y, bodyColor, shellColor, scale, face, bob, rot){
+    ctx.save();
+    ctx.translate(x, y+bob);
+    ctx.scale(scale*(face<0?-1:1), scale);
+    if (rot) ctx.rotate(rot);
+    ctx.fillStyle="rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(0,16,13,4,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=bodyColor; ctx.beginPath(); ctx.ellipse(0,0,13,16,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=shellColor; ctx.beginPath(); ctx.ellipse(0,6,13,9,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=bodyColor; ctx.beginPath(); ctx.ellipse(0,-2,13,4,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.ellipse(-5,-4,3.4,4.4,0,0,Math.PI*2); ctx.ellipse(5,-4,3.4,4.4,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#222"; ctx.beginPath(); ctx.arc(-4.5,-3,1.8,0,Math.PI*2); ctx.arc(5.5,-3,1.8,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="#222"; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(0,2,3,0.15*Math.PI,0.85*Math.PI); ctx.stroke();
+    ctx.fillStyle=shellColor; ctx.beginPath(); ctx.ellipse(-6,15,4,2.6,0,0,Math.PI*2); ctx.ellipse(6,15,4,2.6,0,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawHandItem(x, y, face){   // 蛋仔手持的鱼叉
+    ctx.save();
+    ctx.translate(x+face*16, y+4);
+    ctx.scale(face,1);
+    ctx.strokeStyle="#ffd76a"; ctx.lineWidth=2.5; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(-4,4); ctx.lineTo(10,-6); ctx.stroke();
+    ctx.fillStyle="#fff2c9";
+    ctx.beginPath(); ctx.moveTo(11,-8); ctx.lineTo(5,-4); ctx.lineTo(7,2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGhost(m){
+    if (m.type==="puppet"){ drawPuppet(m); return; }
+    const g=m.hue;
+    ctx.save(); ctx.translate(m.x, m.y);
+    if (m.flash>0){                                     // 被撞飞的冲击环
+      const p=1-m.flash/0.35;
+      ctx.strokeStyle=`rgba(255,224,102,${(1-p)*0.9})`;
+      ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(0,0,m.r+p*46,0,Math.PI*2); ctx.stroke();
+    }
+    const glow=ctx.createRadialGradient(0,0,2,0,0,m.r+14);
+    glow.addColorStop(0,`hsla(${g},80%,70%,.55)`); glow.addColorStop(1,`hsla(${g},80%,70%,0)`);
+    ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,0,m.r+14,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=`hsla(${g},70%,82%,.9)`;
+    ctx.beginPath(); ctx.arc(0,-2,m.r,Math.PI,0); ctx.lineTo(m.r,m.r);
+    for (let i=0;i<3;i++){ const wx=m.r-(i*2+1)*(m.r*2/6); ctx.lineTo(wx,m.r-5); ctx.lineTo(wx-(m.r*2/6),m.r); }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#2a1840"; ctx.beginPath(); ctx.arc(-5,-3,2.6,0,Math.PI*2); ctx.arc(5,-3,2.6,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPuppet(m){   // 傀儡蛋：暗紫圆蛋 + 空洞红眼 + 头顶符咒 + 缝合线
+    ctx.save(); ctx.translate(m.x, m.y);
+    const t=performance.now()/1000;
+    if (m.flash>0){                                     // 被击闪光
+      const p=1-m.flash/0.35;
+      ctx.strokeStyle=`rgba(255,224,102,${(1-p)*0.9})`;
+      ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(0,0,m.r+p*46,0,Math.PI*2); ctx.stroke();
+    }
+    const glow=ctx.createRadialGradient(0,0,2,0,0,m.r+16);
+    glow.addColorStop(0,"hsla(275,60%,55%,.5)"); glow.addColorStop(1,"hsla(275,60%,55%,0)");
+    ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,0,m.r+16,0,Math.PI*2); ctx.fill();
+    // 蛋身（暗紫，带高光）
+    ctx.fillStyle="#3a2a52"; ctx.beginPath(); ctx.arc(0,0,m.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#4a3668"; ctx.beginPath(); ctx.arc(-2,-3,m.r*0.8,0,Math.PI*2); ctx.fill();
+    // 缝合线（十字）
+    ctx.strokeStyle="#241a36"; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.moveTo(-m.r*0.7,0); ctx.lineTo(m.r*0.7,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-m.r*0.7); ctx.lineTo(0,m.r*0.7); ctx.stroke();
+    // 空洞红眼（呼吸发光）
+    const er=2.2+Math.sin(t*5)*0.5;
+    ctx.fillStyle="#ff4455";
+    ctx.beginPath(); ctx.arc(-5,-3,er,0,Math.PI*2); ctx.arc(5,-3,er,0,Math.PI*2); ctx.fill();
+    // 缝合的嘴
+    ctx.strokeStyle="#ff4455"; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(-4,4); ctx.lineTo(4,4); ctx.stroke();
+    // 头顶符咒（飘浮旋转的小纸片）
+    ctx.save(); ctx.translate(0,-m.r-12); ctx.rotate(Math.sin(t*2)*0.25);
+    ctx.fillStyle="#e8d48a"; ctx.fillRect(-5,-7,10,14);
+    ctx.strokeStyle="#8a6a2a"; ctx.lineWidth=1; ctx.strokeRect(-5,-7,10,14);
+    ctx.fillStyle="#8a2a3a"; ctx.font="bold 7px sans-serif"; ctx.textAlign="center";
+    ctx.fillText("咒", 0, 3);
+    ctx.restore();
+    ctx.restore();
+  }
+
+  function drawCart(x, y, face){   // 超市购物车
+    ctx.save(); ctx.translate(x, y);
+    if (face<0) ctx.scale(-1,1);
+    ctx.fillStyle="#333";
+    ctx.beginPath(); ctx.arc(-10,8,3,0,Math.PI*2); ctx.arc(10,8,3,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="#b0b8c8"; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(-16,-2); ctx.lineTo(-16,-8); ctx.lineTo(16,-8); ctx.lineTo(16,-2); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-16,-8); ctx.lineTo(-11,-16); ctx.lineTo(11,-16); ctx.lineTo(16,-8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-10,-16); ctx.lineTo(-8,-24); ctx.lineTo(8,-24); ctx.lineTo(10,-16); ctx.stroke();
+    ctx.fillStyle="#9aa4b4"; ctx.fillRect(13,-20,5,18);
+    ctx.restore();
+  }
+
+  function drawCar(t){   // 出发的车：城堡是大车+车门蓝墙，18 秒后可点击开启
+    ctx.save(); ctx.translate(carX, carY);
+    const open = game.theme.mech==="carwall" ? game.carOpen : game.time>=18;
+    if (game.theme.mech==="carwall"){
+      const ready = !open && game.time>=18;
+      ctx.fillStyle="rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(0,22,78,8,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#4a3a63"; ctx.fillRect(-70,-26,140,38);       // 大车厢
+      ctx.fillStyle="#5b4a80"; ctx.fillRect(-58,-40,116,16);       // 车顶
+      ctx.fillStyle="#9fc3e8"; ctx.fillRect(-48,-35,22,10); ctx.fillRect(-10,-35,22,10); ctx.fillRect(28,-35,22,10);
+      ctx.fillStyle="#222"; ctx.beginPath(); ctx.arc(-40,14,9,0,Math.PI*2); ctx.arc(40,14,9,0,Math.PI*2); ctx.fill();
+      if (!open){   // 车门：顶部蓝色围墙
+        ctx.fillStyle = ready ? "#6a9be0" : "#4a7bd0";
+        ctx.fillRect(-70,-20,140,9);
+        if (ready){   // 可点击提示
+          ctx.strokeStyle=`rgba(255,215,106,${0.5+0.3*Math.sin(t*6)})`;
+          ctx.lineWidth=3; ctx.strokeRect(-72,-22,144,13);
+        }
+        ctx.fillStyle="#ffd76a"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
+        ctx.fillText(ready ? "点击车门开启(E)" : "车门关闭", 0, -13);
+      } else {
+        ctx.strokeStyle="#4a7bd0"; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(-70,-16); ctx.lineTo(-28,-16); ctx.moveTo(28,-16); ctx.lineTo(70,-16); ctx.stroke();
+      }
+    } else {
+      ctx.fillStyle="rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(0,14,40,6,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#3b4a63"; ctx.fillRect(-34,-18,68,30);
+      ctx.fillStyle="#4a5f80"; ctx.fillRect(-28,-30,44,14);
+      ctx.fillStyle="#9fc3e8"; ctx.fillRect(-22,-26,14,9); ctx.fillRect(-2,-26,14,9);
+      ctx.fillStyle="#222"; ctx.beginPath(); ctx.arc(-22,14,7,0,Math.PI*2); ctx.arc(22,14,7,0,Math.PI*2); ctx.fill();
+      if (!open){
+        ctx.strokeStyle="#c98a4e"; ctx.lineWidth=3; ctx.strokeRect(2,-8,14,16);
+        ctx.fillStyle="#ffd76a"; ctx.font="bold 10px sans-serif"; ctx.textAlign="center";
+        ctx.fillText("门锁", 9, 5);
+      } else {
+        ctx.fillStyle="rgba(0,0,0,.35)";
+        ctx.beginPath(); ctx.moveTo(16,-8); ctx.lineTo(32,-2); ctx.lineTo(32,8); ctx.lineTo(16,8); ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawCorpse(x, y, skin){   // 阵亡队友留下的尸体（侧躺的蛋仔 + X 眼）
+    ctx.save(); ctx.translate(x, y);
+    ctx.rotate(Math.PI/2);
+    ctx.fillStyle="rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(0,11,11,3.5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=skin.body; ctx.beginPath(); ctx.ellipse(0,0,11,14,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=skin.shell; ctx.beginPath(); ctx.ellipse(0,5,11,8,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="#333"; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(-5,-3); ctx.lineTo(-1,1); ctx.moveTo(-1,-3); ctx.lineTo(-5,1);
+    ctx.moveTo(5,-3); ctx.lineTo(9,1); ctx.moveTo(9,-3); ctx.lineTo(5,1);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPuppy(x, y, face, wag){
+    ctx.save();
+    ctx.translate(x, y+Math.sin(wag*10)*1.5);
+    ctx.scale(face,1);
+    // 尾巴
+    ctx.strokeStyle="#c98a4e"; ctx.lineWidth=3; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(-11,-6);
+    ctx.quadraticCurveTo(-16,-10+Math.sin(wag*12)*4, -14,-16+Math.sin(wag*12)*5);
+    ctx.stroke();
+    // 身体
+    ctx.fillStyle="#d9a066";
+    ctx.beginPath(); ctx.ellipse(0,4,12,8,0,0,Math.PI*2); ctx.fill();
+    // 头
+    ctx.fillStyle="#d9a066";
+    ctx.beginPath(); ctx.arc(10,-4,7,0,Math.PI*2); ctx.fill();
+    // 耳朵
+    ctx.fillStyle="#a06b3a";
+    ctx.beginPath(); ctx.moveTo(6,-9); ctx.lineTo(8,-16); ctx.lineTo(11,-9); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(11,-9); ctx.lineTo(14,-15); ctx.lineTo(16,-7); ctx.closePath(); ctx.fill();
+    // 眼睛鼻子
+    ctx.fillStyle="#2a1840";
+    ctx.beginPath(); ctx.arc(13,-5,1.6,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(17,-3,1.2,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function render() {
+    const th=game.theme;
+    ctx.fillStyle=th.bg; ctx.fillRect(0,0,W,H_TOT);
+    if (grid.length) for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) drawTile(r,c);
+
+    // 外部停车区
+    ctx.fillStyle=th.ground; ctx.fillRect(0,H,W,OUTER);
+    ctx.strokeStyle="rgba(255,255,255,.06)";
+    for (let yy=H+TILE; yy<SEWER_Y; yy+=TILE){ ctx.beginPath(); ctx.moveTo(0,yy); ctx.lineTo(W,yy); ctx.stroke(); }
+    // 大门/侧门（地牢底部入口；关着画栅栏，进门鉴开启后消失）
+    for (const [gx2,gn2] of [[GATE_COL*TILE,"main"],[(COLS-1)*TILE,"side"]]){
+      if (gn2==="side" && !game.theme.sideDoor) continue;
+      ctx.strokeStyle="#8a7a4a"; ctx.lineWidth=3;
+      ctx.strokeRect(gx2+1, GATE_ROW*TILE-2, TILE-2, 6);
+      if (gates[gn2].openT<=0){
+        ctx.strokeStyle="#c9b878"; ctx.lineWidth=2.5;
+        for (let i=0;i<5;i++){ ctx.beginPath(); ctx.moveTo(gx2+6+i*7, GATE_ROW*TILE-2); ctx.lineTo(gx2+6+i*7, GATE_ROW*TILE+5); ctx.stroke(); }
+      }
+    }
+    drawCar(performance.now()/1000);
+    // 城堡侧门：右侧楼梯 + 路牌
+    if (game.theme.sideDoor){
+      const sx=14*TILE+2;
+      ctx.fillStyle="#7a6a5a";
+      for (let i=0;i<4;i++) ctx.fillRect(sx-14, H+8+i*20, 50, 7);
+      ctx.fillStyle="#c9b878"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("侧门→", sx+10, H+4);
+    }
+    // 下水道层：超市有井盖+楼梯+走廊+下水道门；其他图是地图外深色带
+    if (game.theme.cart){
+      // 走廊
+      ctx.fillStyle="#101b17"; ctx.fillRect(SEWER_L-8,SEWER_Y,SEWER_R-SEWER_L+16,SEWER);
+      ctx.fillStyle="#2c443a"; ctx.fillRect(SEWER_L-8,SEWER_Y,SEWER_R-SEWER_L+16,7);
+      ctx.fillRect(SEWER_L-8,SEWER_Y+SEWER-7,SEWER_R-SEWER_L+16,7);
+      ctx.strokeStyle="rgba(120,200,170,.14)"; ctx.lineWidth=1.5;
+      for (let bx=SEWER_L; bx<SEWER_R; bx+=44){ ctx.beginPath(); ctx.moveTo(bx,SEWER_Y+7); ctx.lineTo(bx,SEWER_Y+SEWER-7); ctx.stroke(); }
+      for (let by=SEWER_Y+22; by<SEWER_Y+SEWER; by+=22){ ctx.beginPath(); ctx.moveTo(SEWER_L-8,by); ctx.lineTo(SEWER_R+8,by); ctx.stroke(); }
+      // 下水道门（走廊左端）
+      if (gates.sewer.openT<=0){
+        ctx.fillStyle="#3d5a4e"; ctx.fillRect(SEWER_DOOR_X-7,SEWER_Y+6,14,SEWER-12);
+        ctx.strokeStyle="#8fb5a2"; ctx.lineWidth=2;
+        for (let i=0;i<4;i++){ ctx.beginPath(); ctx.moveTo(SEWER_DOOR_X-4,SEWER_Y+14+i*18); ctx.lineTo(SEWER_DOOR_X+4,SEWER_Y+14+i*18); ctx.stroke(); }
+        ctx.fillStyle="#ffe9a8"; ctx.font="bold 10px sans-serif"; ctx.textAlign="center";
+        ctx.fillText("鉴", SEWER_DOOR_X, SEWER_Y+SEWER/2+3);
+      } else {
+        ctx.strokeStyle="#6ecf6e"; ctx.lineWidth=3;
+        ctx.strokeRect(SEWER_DOOR_X-9, SEWER_Y+4, 18, SEWER-8);
+      }
+      // 井盖 + 楼梯（外部区右下）
+      ctx.fillStyle="#3a3f4a";
+      ctx.save(); ctx.translate(SEWER_EX,H+OUTER-22); ctx.scale(1.8,1);
+      ctx.beginPath(); ctx.arc(0,0,11,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle="#5a606e"; ctx.lineWidth=2;
+      ctx.save(); ctx.translate(SEWER_EX,H+OUTER-22); ctx.scale(1.8,1);
+      ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2); ctx.stroke();
+      ctx.restore();
+      ctx.beginPath(); ctx.moveTo(SEWER_EX-14,H+OUTER-22); ctx.lineTo(SEWER_EX+14,H+OUTER-22); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(SEWER_EX,H+OUTER-29); ctx.lineTo(SEWER_EX,H+OUTER-15); ctx.stroke();
+      ctx.fillStyle="#5a6a5f";
+      for (let i=0;i<5;i++) ctx.fillRect(SEWER_EX-8, H+OUTER-16+i*13, 16, 5);   // 向下的梯子
+      ctx.fillStyle="#ffd76a"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("下水道 ↓", SEWER_EX, H+OUTER-34);
+      ctx.fillText("→ 下水道门", SEWER_DOOR_X+70, SEWER_Y+SEWER/2+4);
+      ctx.textAlign="left";
+    } else {
+      ctx.fillStyle="rgba(0,0,0,.4)"; ctx.fillRect(0,SEWER_Y,W,SEWER);   // 非超市图：地图外深色
+    }
+
+    const t=performance.now()/1000;
+    for (const g of gems){ if(g.taken) continue;
+      const yy=g.y+Math.sin(t*3+g.ph)*2;
+      ctx.fillStyle="#5be0ff"; ctx.beginPath(); ctx.arc(g.x,yy,g.r,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#bff4ff"; ctx.beginPath(); ctx.arc(g.x-2,yy-2,3,0,Math.PI*2); ctx.fill();
+    }
+    const tg=ctx.createRadialGradient(treasure.x,treasure.y,2,treasure.x,treasure.y,34);
+    tg.addColorStop(0,"rgba(255,200,90,.6)"); tg.addColorStop(1,"rgba(255,200,90,0)");
+    ctx.fillStyle=tg; ctx.beginPath(); ctx.arc(treasure.x,treasure.y,34,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#ffc85a"; ctx.fillRect(treasure.x-14,treasure.y-4,28,18);
+    ctx.fillStyle="#c8902f"; ctx.fillRect(treasure.x-14,treasure.y-12,28,9);
+    ctx.fillStyle="#7a5510"; ctx.fillRect(treasure.x-3,treasure.y-2,6,7);
+
+    // AI 队友（带技能特效；阵亡的留下尸体）
+    for (const b of bots){
+      if (b.dead){ drawCorpse(b.x, b.y, b.skin); continue; }
+      ctx.globalAlpha = 1;
+      if (b.boost>0){ ctx.strokeStyle=`rgba(124,252,155,${0.45+0.3*Math.sin(t*10)})`; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(b.x,b.y,19,0,Math.PI*2); ctx.stroke(); }
+      if (b.atkFx>0){ const p=b.atkFx/0.25; ctx.strokeStyle=`rgba(255,215,106,${p*0.8})`; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(b.x,b.y,42, b.face>0?-0.9:Math.PI-0.9, b.face>0?0.9:Math.PI+0.9); ctx.stroke(); }
+      drawEgg(b.x,b.y,b.skin.body,b.skin.shell,0.85,b.face,Math.sin(t*7+b.wob)*1.4, b.roll>0?b.rAng:0);
+      ctx.globalAlpha = 1;
+    }
+    if (puppy) drawPuppy(puppy.x, puppy.y, puppy.face, puppy.wag);
+    if (game.state===STATE.DEAD){
+      drawCorpse(player.x, player.y, CHARS[game.char]);   // 你的尸体留在原地
+    } else if (!(player.invuln>0 && (Math.floor(t*12)%2===0))){
+      const sk=game.skin;
+      const rolling=game.char==="huang"&&game.skillT>0;
+      const bob= rolling ? 0 : (game.healChan ? Math.sin(t*6)*3.5 : Math.sin(t*8)*1.8);
+      drawEgg(player.x,player.y,sk.body,sk.shell,1,player.face, bob, rolling?game.rollAngle:0);
+    }
+    // 手持物品（装备鱼叉时手上握着鱼叉）
+    if (game.state===STATE.PLAYING && equipped!=null && invSlots[equipped] && invSlots[equipped].type==="harpoon"){
+      drawHandItem(player.x, player.y, player.face);
+    }
+    // 超市购物车（4 辆）
+    if (game.state!==STATE.DEAD && game.theme.cart){
+      for (const c of carts) drawCart(c.x, c.y, c.face);
+    }
+    // 治疗引导光环（自己 + 目标队友）
+    if (game.healChan){
+      const pulse=0.35+0.25*Math.sin(t*8);
+      ctx.strokeStyle=`rgba(124,252,155,${pulse})`; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(player.x,player.y,26,0,Math.PI*2); ctx.stroke();
+      if (game.healChan.target){
+        ctx.strokeStyle=`rgba(124,252,155,${pulse*0.8})`;
+        ctx.beginPath(); ctx.arc(game.healChan.target.x,game.healChan.target.y,20,0,Math.PI*2); ctx.stroke();
+      }
+    }
+    // 复活引导：玩家和尸体之间的绿色连线
+    if (game.reviveChan){
+      const pulse=0.35+0.25*Math.sin(t*8);
+      ctx.strokeStyle=`rgba(124,252,155,${pulse})`; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(player.x,player.y,24,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle=`rgba(124,252,155,${pulse*0.5})`; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(player.x,player.y); ctx.lineTo(game.reviveChan.target.x,game.reviveChan.target.y); ctx.stroke();
+    }
+
+    // ===== 技能特效 =====
+    if (game.char==="huang" && game.skillT>0){          // 滚动尘土拖尾
+      ctx.fillStyle="rgba(255,224,102,.55)";
+      for (let i=1;i<=4;i++){
+        ctx.globalAlpha=0.6-i*0.13;
+        const off=i*13;
+        ctx.beginPath();
+        ctx.arc(player.x-player.face*off, player.y+12+Math.sin(t*20+i)*2, 4-i*0.6, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    }
+    if (game.char==="puff" && game.skillT>0){           // 护盾光环
+      ctx.strokeStyle=`rgba(255,143,194,${0.45+0.3*Math.sin(t*10)})`;
+      ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(player.x,player.y,24,0,Math.PI*2); ctx.stroke();
+    }
+    if (game.scareFx>0){                                 // 猫威冲击波
+      const p=1-game.scareFx/0.5;
+      ctx.strokeStyle=`rgba(246,201,143,${(1-p)*0.85})`;
+      ctx.lineWidth=4;
+      ctx.beginPath(); ctx.arc(player.x,player.y,p*280,0,Math.PI*2); ctx.stroke();
+    }
+
+    for (const m of monsters) drawGhost(m);
+
+    for (const f of floaters){ ctx.fillStyle=`rgba(${th.floater},${f.a})`; ctx.beginPath(); ctx.arc(f.x,f.y,f.s*3,0,Math.PI*2); ctx.fill(); }
+
+    // spotlight 黑暗（离屏层 + 多光源打洞）
+    let light=220*(CHARS[game.char].lightMul||1);
+    dctx.globalCompositeOperation="source-over";
+    dctx.clearRect(0,0,W,H_TOT);
+    dctx.fillStyle="rgba(10,8,16,0.97)";
+    dctx.fillRect(0,0,W,H_TOT);
+    dctx.globalCompositeOperation="destination-out";
+    punch(dctx, player.x, player.y, light);
+    for (const L of lights) punch(dctx, L.e.x, L.e.y, L.r);
+    dctx.globalCompositeOperation="source-over";
+    ctx.drawImage(darkCanvas, 0, 0);
+    // 点亮区域的高亮圈
+    for (const L of lights){
+      ctx.strokeStyle=`rgba(255,220,140,${0.22+0.14*Math.sin(t*5)})`;
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(L.e.x, L.e.y, L.r*0.55, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // 治疗绿环
+    if (game.healFx>0){
+      const p=1-game.healFx/0.5;
+      ctx.strokeStyle=`rgba(124,252,155,${(1-p)*0.85})`;
+      ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(player.x,player.y,20+p*70,0,Math.PI*2); ctx.stroke();
+    }
+
+    updateSkillHud();
+
+    // 队友状态 HUD
+    const alive=bots.filter(b=>!b.dead).length+"/"+bots.length;
+    if (render._lm!==alive){ render._lm=alive; document.getElementById("mates").textContent=alive; }
+
+    // 队友模式标签 & 技能冒字（黑暗之上，保证可见）
+    ctx.textAlign="center";
+    // 宝箱交互提示
+    if (game.state===STATE.PLAYING){
+      if (chestState!=="carried" && Math.hypot(player.x-treasure.x,player.y-treasure.y)<56){
+        ctx.font="bold 12px sans-serif"; ctx.fillStyle="#ffd76a";
+        ctx.fillText(game.char==="duoduo" ? "J 打开 / K 吃掉" : "J 打开宝箱", treasure.x, treasure.y-24);
+      } else if (chestState==="carried" && chestCarrier===player){
+        ctx.font="bold 12px sans-serif"; ctx.fillStyle="#ffd76a";
+        ctx.fillText("J 吐出宝箱", player.x, player.y-32);
+      }
+      // 吞了宝箱的队友头顶挂个小宝箱
+      if (chestState==="carried" && chestCarrier){
+        const c=chestCarrier;
+        ctx.fillStyle="#ffc85a"; ctx.fillRect(c.x-6, c.y-36, 12, 8);
+        ctx.fillStyle="#c8902f"; ctx.fillRect(c.x-6, c.y-40, 12, 5);
+      }
+      // 肚子状态：几件 + 最快消化剩余秒数
+      const bellies=[];
+      if (game.char==="duoduo" && game.belly.length) bellies.push({e:player, belly:game.belly});
+      for (const b of bots){ if (b.skin===CHARS.duoduo && b.belly.length) bellies.push({e:b, belly:b.belly}); }
+      for (const bb of bellies){
+        const minT=Math.min(...bb.belly.map(it=>it.t));
+        ctx.font="10px sans-serif"; ctx.fillStyle="#ffd76a";
+        ctx.fillText("肚中"+bb.belly.length+"件 "+Math.ceil(minT)+"s", bb.e.x, bb.e.y-30);
+      }
+    }
+    for (const b of bots){
+      if (b.dead) continue;
+      ctx.font="10px sans-serif";
+      ctx.fillStyle = b.mode==="follow" ? "#9ecbff" : "rgba(255,255,255,.4)";
+      ctx.fillText(b.mode==="follow" ? "跟随" : "自由", b.x, b.y-22);
+    }
+    for (const f of floatTexts){
+      ctx.globalAlpha=Math.max(0,Math.min(1,f.t));
+      ctx.fillStyle=f.color; ctx.font="bold 13px sans-serif";
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.globalAlpha=1;
+    }
+    ctx.textAlign="left";
+
+    // 鱼叉挥砍弧 & 小火苗 & 地上的鱼叉（黑暗之上可见）
+    if (game.swingFx>0){
+      const p=1-game.swingFx/0.3;
+      ctx.strokeStyle=`rgba(255,215,106,${p*0.9})`; ctx.lineWidth=4;
+      ctx.beginPath();
+      ctx.arc(player.x,player.y,52, player.face>0? -1.0: Math.PI-1.0, player.face>0? 1.0: Math.PI+1.0);
+      ctx.stroke();
+    }
+    // 扔出的物品（飞行中的鱼叉）
+    for (const th of throwns){
+      ctx.save(); ctx.translate(th.x,th.y); ctx.rotate(th.ang);
+      ctx.strokeStyle="#ffd76a"; ctx.lineWidth=3; ctx.lineCap="round";
+      ctx.beginPath(); ctx.moveTo(-12,4); ctx.lineTo(12,-4); ctx.stroke();
+      ctx.fillStyle="#fff2c9";
+      ctx.beginPath(); ctx.moveTo(14,-5); ctx.lineTo(6,-2); ctx.lineTo(9,4); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    for (const dp of drops){
+      if (dp.type==="revive"){   // 地上的返魂药水
+        ctx.save(); ctx.translate(dp.x, dp.y);
+        const glow=ctx.createRadialGradient(0,-2,2,0,-2,14);
+        glow.addColorStop(0,"rgba(124,252,155,.5)"); glow.addColorStop(1,"rgba(124,252,155,0)");
+        ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,-2,14,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle="#7cfc9b";
+        ctx.beginPath(); ctx.moveTo(-6,-2); ctx.quadraticCurveTo(0,4,6,-2); ctx.lineTo(5,6); ctx.lineTo(-5,6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle="#fff2c9"; ctx.fillRect(-2,-6,4,4);
+        ctx.restore();
+        continue;
+      }
+      ctx.save(); ctx.translate(dp.x, dp.y); ctx.rotate(-0.6);
+      const glow=ctx.createRadialGradient(0,0,2,0,0,16);
+      glow.addColorStop(0,"rgba(255,215,106,.5)"); glow.addColorStop(1,"rgba(255,215,106,0)");
+      ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,0,16,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle="#ffd76a"; ctx.lineWidth=3; ctx.lineCap="round";
+      ctx.beginPath(); ctx.moveTo(-12,4); ctx.lineTo(12,-4); ctx.stroke();
+      ctx.fillStyle="#fff2c9";
+      ctx.beginPath(); ctx.moveTo(14,-5); ctx.lineTo(6,-2); ctx.lineTo(9,4); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    for (const f of fires){
+      const flick=0.7+Math.random()*0.3;
+      const R=f.landed?7:3.5;
+      ctx.fillStyle=`rgba(255,${130+Math.random()*90},50,${Math.max(0,f.life)*flick})`;
+      ctx.beginPath(); ctx.arc(f.x,f.y,R,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=`rgba(255,240,150,${Math.max(0,f.life)*0.8})`;
+      ctx.beginPath(); ctx.arc(f.x,f.y,R*0.5,0,Math.PI*2); ctx.fill();
+    }
+
+    // 开场阶段提示（黑暗之上可见）
+    if (game.state===STATE.PLAYING){
+      ctx.font="bold 15px sans-serif"; ctx.textAlign="center";
+      if (game.time<18){
+        ctx.fillStyle="#ffd76a";
+        ctx.fillText("车门开启 "+Math.ceil(18-game.time)+"s", player.x, player.y-34);
+      } else if (game.theme.mech==="carwall" && !game.carOpen){
+        ctx.fillStyle="#6a9be0";
+        ctx.fillText("点击车门开启（或按 E）", player.x, player.y-34);
+      } else if (!game.huntStarted){
+        ctx.fillStyle="#9ecbff";
+        ctx.fillText("从大门进入开始寻宝", player.x, player.y-34);
+      }
+      ctx.textAlign="left";
+    }
+
+    // 进门鉴按钮 & 提示 & 引导进度（黑暗之上可见）
+    const gateSpots=[[GATE_COL*TILE+TILE/2,"main"],[(COLS-1)*TILE+TILE/2,"side"]];
+    for (const [gx,gn] of gateSpots){
+      if (gn==="side" && !game.theme.sideDoor) continue;
+      const gy=GATE_ROW*TILE+TILE/2;
+      ctx.fillStyle = gates[gn].openT>0 ? "#6ecf6e" : "#b0a06a";
+      ctx.fillRect(gx-9, gy+8, 18, 12);
+      ctx.fillStyle="#fff"; ctx.font="bold 9px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("鉴", gx, gy+17);
+      if (game.state===STATE.PLAYING && gates[gn].openT<=0 && !(game.gateChan && game.gateChan.by==="player") && Math.hypot(player.x-gx, player.y-gy)<54){
+        ctx.fillStyle="#ffd76a"; ctx.font="bold 12px sans-serif";
+        ctx.fillText("点击进门鉴（或按 E）", gx, gy-16);
+      }
+      ctx.textAlign="left";
+    }
+    // 下水道门提示（超市走廊左端）
+    if (game.theme.cart && game.inSewer && gates.sewer.openT<=0 && !(game.gateChan && game.gateChan.by==="player") &&
+        Math.hypot(player.x-SEWER_DOOR_X, player.y-(SEWER_Y+SEWER/2))<54){
+      ctx.fillStyle="#ffd76a"; ctx.font="bold 12px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("点击进门鉴（或按 E）", SEWER_DOOR_X, SEWER_Y-12);
+      ctx.textAlign="left";
+    }
+    if (game.gateChan){
+      const gc=game.gateChan;
+      ctx.fillStyle="#ffd76a"; ctx.font="bold 13px sans-serif"; ctx.textAlign="center";
+      ctx.fillText("进门鉴验证 "+Math.ceil(gc.t)+"s", gc.gx, gc.gy||GATE_ROW*TILE-16);
+      ctx.textAlign="left";
+    }
+
+    // 阵亡观战：高亮当前观看的队友
+    if (game.state===STATE.DEAD){
+      const ab=aliveBots();
+      if (ab.length){
+        const b=ab[Math.min(game.spectate, ab.length-1)];
+        ctx.strokeStyle=`rgba(255,215,106,${0.5+0.3*Math.sin(t*6)})`;
+        ctx.lineWidth=2.5;
+        ctx.beginPath(); ctx.arc(b.x,b.y,22,0,Math.PI*2); ctx.stroke();
+        ctx.font="bold 12px sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#ffd76a";
+        ctx.fillText(b.skin.name, b.x, b.y-26);
+        ctx.textAlign="left";
+      }
+    }
+
+    // 罗盘：指向宝箱（被吞时指向吞下它的队友）
+    const ccx = (chestState==="carried" && chestCarrier) ? chestCarrier.x : treasure.x;
+    const ccy = (chestState==="carried" && chestCarrier) ? chestCarrier.y : treasure.y;
+    const ang=Math.atan2(ccy-player.y, ccx-player.x);
+    ctx.save(); ctx.translate(player.x+Math.cos(ang)*30, player.y+Math.sin(ang)*30); ctx.rotate(ang);
+    ctx.fillStyle=th.accent; ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(-5,-5); ctx.lineTo(-2,0); ctx.lineTo(-5,5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  // ===== 主循环 =====
+  let last=performance.now();
+  function loop(now){
+    const dt=Math.min(0.05,(now-last)/1000); last=now;
+    update(dt); render();
+    requestAnimationFrame(loop);
+  }
+
+  // 初始化：先生成一张预览地图垫底（避免菜单态渲染报错卡死）
+  game.cfg=DIFF[game.difficulty]; game.theme=MAPS[game.map];
+  generateLevel();
+  updateCharSkill();
+  renderMateButtons();
+  renderDiffButtons();
+  setActive("diff-row", document.querySelector('[data-diff="easy"]'));
+  setSpectateUI();
+  showOverlay("蛋仔惊魂寻宝队", "", "开始冒险", true);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
