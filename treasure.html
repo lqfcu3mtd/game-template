@@ -164,7 +164,7 @@
             <button class="start" id="ov-btn">开始冒险</button>
             <button class="start" id="shopBtn">商城</button>
           </div>
-          <p class="hint">WASD 移动 · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · E 开门/刷卡/上下购物车 · 点击快捷栏装备 · 空格暂停 · R 换图</p>
+          <p class="hint">WASD 移动 · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头（盯住身后脚步声） · E 开门/刷卡/上下购物车 · 点击快捷栏装备 · 空格暂停 · R 换图</p>
         </div>
       </div>
     </div>
@@ -526,6 +526,10 @@
     if (k === "2" && bots[1]) toggleBot(bots[1]);
     if (k === "3" && bots[2]) toggleBot(bots[2]);
     if (k === "r") newGame();
+    if (k === "q" && game.state===STATE.PLAYING){   // Q 快速回头：听到脚步声转身盯住身后的傀儡蛋
+      player.face*=-1;
+      addFloat(player.x, player.y-26, "回头！", "#ffd76a");
+    }
     if (k === "e" && game.state===STATE.PLAYING){
       let done=false;
       if (game.theme.mech==="carwall" && game.time>=18 && !game.carOpen){ openCarDoor(); done=true; }
@@ -895,7 +899,7 @@
                         angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0,
                         state:"chase", timer:0, hp:2,
                         hue: isPuppet?285+Math.random()*25 : 200+Math.random()*80,
-                        wanderT:0, spawnFx:0.7, face:1, lungeT:0, biteTarget:null, watched:false });
+                        wanderT:0, spawnFx:0.7, face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0 });
         addFloat(p.x, p.y-22, isPuppet?"傀儡蛋出现":"小幽灵出现", isPuppet?"#d9a6ff":"#9ecbff");
         return;
       }
@@ -964,7 +968,7 @@
                         r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
                         angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
                         hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
-                        face:1, lungeT:0, biteTarget:null, watched:false });
+                        face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0 });
       } else if (it.type==="chest"){
         treasure.x=x; treasure.y=y; chestState="intact"; chestCarrier=null;
       }
@@ -978,7 +982,7 @@
       monsters.push({ type:it.type, x, y, r: it.type==="puppet" ? 16+Math.random()*3 : 13+Math.random()*5,
                       angle:Math.random()*Math.PI*2, wt:0, stun:0, flash:0, state:"chase", timer:0, hp:2,
                       hue: it.type==="puppet" ? 285+Math.random()*25 : 200+Math.random()*80, wanderT:0,
-                      face:1, lungeT:0, biteTarget:null, watched:false });
+                      face:1, lungeT:0, biteTarget:null, watched:false, stepT:0, stepFx:0 });
     else if (it.type==="chest"){
       treasure.x=ent.x; treasure.y=ent.y; chestState="intact"; chestCarrier=null;
       addFloat(ent.x, ent.y-24, "吐出宝箱", "#9ecbff");
@@ -1277,19 +1281,21 @@
             if (m.biteTarget) hurt(m.biteTarget, 40);
             m.lungeT=0; m.biteTarget=null;
           }
-        } else {                             // 没被注视：快速奔跑追最近的活体
+        } else {                             // 没被注视：快速奔跑追最近的活体（移动会发出脚步声）
           if (nd>0.1){
             const spd = cfg.chase*1.5;       // 跑得很快
             const nx=m.x+(ne.x-m.x)/nd*spd*dt, ny=m.y+(ne.y-m.y)/nd*spd*dt;
             const okX=!hitsWall(nx, m.y, m.r), okY=!hitsWall(m.x, ny, m.r);
             if (okX) m.x=nx; if (okY) m.y=ny;
             m.face = ne.x>=m.x ? 1 : -1;
+            if (okX || okY){ m.stepT-=dt; if (m.stepT<=0){ m.stepT=0.36; m.stepFx=0.5; } }   // 脚步声节奏
             if (nd < m.r+18+8){ m.lungeT=1; m.biteTarget = nd<Math.hypot(player.x-m.x,player.y-m.y) ? ne : player; m.biteTarget = m.biteTarget===ne?ne:player; }  // 够近→面向蓄力
           }
         }
         m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
         if (m.flash>0) m.flash-=dt;
         if (m.spawnFx>0) m.spawnFx-=dt;
+        if (m.stepFx>0) m.stepFx-=dt;
       } else if (m.stun>0){
         m.stun-=dt;
       } else if (m.state==="charge"){
@@ -1502,11 +1508,19 @@
           else addFloat(player.x,player.y-26,"血量已满","#9ecbff");
         }
       }
+      // 听到脚步声：附近有跑动的傀儡蛋 → 停下转头盯住它（让它定身）；有幽灵逼近先逃命
+      b.watching=null;
+      for (const m of monsters){
+        if (m.type!=="puppet" || m.watched || m.lungeT>0) continue;   // 只盯正在跑动（发声）的
+        if (Math.hypot(m.x-b.x,m.y-b.y)<300){ b.watching=m; break; }
+      }
+      if (b.watching && threatened) b.watching=null;
+      if (b.watching) b.face = b.watching.x>=b.x ? 1 : -1;
       const dx=tx-b.x, dy=ty-b.y, d=Math.hypot(dx,dy);
       let sp=(fg&&fd<110)?125:95;
       if (b.boost>0) sp*=1.5;
       if (b.roll>0){ sp+=12; b.rAng+=sp*dt*0.02; } else b.rAng*=0.85;
-      if (!b.riding && !chanStand && d>4){
+      if (!b.riding && !chanStand && !b.watching && d>4){
         // 主动绕墙：撞墙就沿切向绕行一段
         let ang=Math.atan2(dy,dx);
         if (b.detour>0){ b.detour-=dt; ang+=b.detourDir*Math.PI/2; }
@@ -1826,6 +1840,13 @@
       ctx.strokeStyle=`rgba(255,70,90,${0.4+0.35*Math.sin(t*16)})`;
       ctx.lineWidth=3;
       ctx.beginPath(); ctx.arc(0,0,m.r+7,0,Math.PI*2); ctx.stroke();
+    }
+    if (m.stepFx>0){                                    // 脚步声波纹（移动中扩散）
+      const p=1-m.stepFx/0.5;
+      ctx.strokeStyle=`rgba(255,220,150,${(1-p)*0.85})`;
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(0,m.r*0.5, 4+p*18, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0,m.r*0.5, 12+p*24, 0, Math.PI*2); ctx.stroke();
     }
     if (m.spawnFx>0){                                   // 刷怪出生扩散圈
       const p=1-m.spawnFx/0.7;
@@ -2279,6 +2300,16 @@
       } else if (!game.huntStarted){
         ctx.fillStyle="#9ecbff";
         ctx.fillText("从大门进入开始寻宝", player.x, player.y-34);
+      } else {
+        // 脚步声提示：附近有跑动的傀儡蛋 → 按 Q 回头盯住它
+        let near=false;
+        for (const m of monsters){
+          if (m.type==="puppet" && !m.watched && m.lungeT<=0 && Math.hypot(m.x-player.x,m.y-player.y)<300){ near=true; break; }
+        }
+        if (near){
+          ctx.fillStyle="#ffd76a"; ctx.font="bold 13px sans-serif";
+          ctx.fillText("👂 听到脚步声！按 Q 回头盯住它", player.x, player.y-40);
+        }
       }
       ctx.textAlign="left";
     }
