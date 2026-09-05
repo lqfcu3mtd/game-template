@@ -95,7 +95,7 @@
       <span>惊魂币 <b id="coins">0</b></span>
       <span>宝物 <b id="haulCount">0</b></span>
       <span>技能 <b id="skill">疾跑 ·就绪</b></span>
-      <span>时间 <b id="time">0</b>s</span>
+      <span>时间 <b id="time">0</b>s · 🕗<b id="clock">20:00</b></span>
       <span id="evac" style="color:#7cfc9b">撤离 ¥0 / ¥0</span>
     </div>
     <div class="stage">
@@ -103,7 +103,7 @@
       <div class="overlay" id="overlay">
         <div class="panel">
           <h2 id="ov-title">蛋仔惊魂寻宝队</h2>
-          <p id="ov-text">选难度选地图，捡惊魂币、开宝箱、搜刮地上宝物（进背包），<br>回车里点「上交宝物」换惊魂币，撤离金额达标后按 X 撤离！</p>
+          <p id="ov-text">选难度选地图，捡惊魂币、开宝箱、搜刮地上宝物（进背包），<br>回车里点「上交宝物」换惊魂币，撤离金额达标后按 X 撤离！<br>车门开启后世界时钟从 20:00 走到 24:00（1 秒 = 1 分钟），午夜前没撤离成功就算撤离失败</p>
           <div id="picks">
             <div class="pick">
               <div class="pick-label">难度</div>
@@ -166,7 +166,7 @@
             <button class="start" id="ov-btn">开始冒险</button>
             <button class="start" id="shopBtn">商城</button>
           </div>
-          <p class="hint">WASD 移动 · 空格跳跃（躲火焰） · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头 · E 开门/刷卡 · P 暂停 · R 换图<br>宝物在背包里（快捷栏/背包/宠物包）· 回车里点「上交宝物」或按 V 上交 · 金额达标按 X 撤离 · 小心偷偷猫偷你包里的宝物</p>
+          <p class="hint">WASD 移动 · 空格跳跃（躲火焰） · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头 · E 开门/刷卡 · P 暂停 · R 换图<br>宝物在背包里（快捷栏/背包/宠物包）· 回车里点「上交宝物」或按 V 上交 · 金额达标按 X 撤离 · 小心偷偷猫偷你包里的宝物<br>⏰ 车门开启后时钟 20:00 开走（1 秒 = 1 分钟）：必须在 24:00 前回车里按 X 撤离，否则撤离失败</p>
         </div>
       </div>
     </div>
@@ -254,6 +254,8 @@
   const SEWER_DOOR_X = SEWER_L + 22;             // 下水道门（走廊左端，刷卡进入超市）
   const GATE_ROW = 10, GATE_COL = 7;         // 大门：地牢底排缺口
   const CAR_X = W/2, CAR_Y = H + 52;         // 出发的车（默认）
+  // 世界时钟：车门开启前固定 20:00；开启后 1 现实秒 = 1 游戏分钟（20:00→24:00 共 240 秒），午夜前未撤离成功即失败
+  const WORLD_T0 = 20*60, WORLD_END = 24*60, NIGHT_LEN = WORLD_END - WORLD_T0;   // 240
   let carX = CAR_X, carY = CAR_Y;            // 每局按地图设定（城堡：左下大车）
   let cart = null;                           // 玩家推的购物车（超市）
   let carts = [];                            // 超市全部购物车（4 辆）
@@ -391,7 +393,7 @@
   };
 
   const game = {
-    state: STATE.MENU, hp: 100, coins: 0, time: 0, winner: "",
+    state: STATE.MENU, hp: 100, coins: 0, time: 0, worldT: 0, winner: "",
     eatT: 0, belly: [], healFx: 0, swingFx: 0, healChan: null, reviveChan: null,
     spectate: 0, potReviveT: 0, huntStarted: false, enterT: 0, roundCounted: false,
     carOpen: false, cartPush: false, cartMode: false, gateChan: null, ridingCart: null, inSewer: false, spawnT: 0,   // 车门 / 购物车 / 进门鉴 / 下水道 / 刷怪计时
@@ -682,7 +684,8 @@
   function openCarDoor(){
     if (game.state!==STATE.PLAYING || game.carOpen) return;
     game.carOpen=true;
-    addFloat(carX, H+2, "车门开启！出发吧", "#ffd76a");
+    addFloat(carX, H+2, "车门开启！时钟 20:00 开走 · 24:00 前撤离", "#ffd76a");
+    updateClockHud();
   }
   function startGateChan(gx, gn, gy){   // 进门鉴：站 3 秒开门（人机刷卡不阻塞玩家）
     if ((game.gateChan && game.gateChan.by==="player") || game.state!==STATE.PLAYING || gates[gn].openT>0) return;
@@ -779,7 +782,23 @@
     document.getElementById("coins").textContent = game.coins;
     document.getElementById("haulCount").textContent = treasureCount();
     document.getElementById("time").textContent = Math.floor(game.time);
+    updateClockHud();
     updateEvacHud();
+  }
+
+  // 世界时钟：车门开前固定 20:00；开走后 1 秒 = 1 分钟，HH:MM 显示
+  function clockText(){
+    const mins = WORLD_T0 + Math.floor(game.worldT);        // worldT 1 单位 = 1 游戏分钟 = 1 现实秒
+    const m = Math.min(mins, WORLD_END);
+    return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+  }
+  let lastClockTxt="";
+  function updateClockHud(){
+    const el=document.getElementById("clock"); if (!el) return;
+    const txt=clockText();
+    if (txt!==lastClockTxt){ lastClockTxt=txt; el.textContent=txt; }
+    const rem = NIGHT_LEN - game.worldT;
+    el.style.color = game.carOpen ? (rem<=60 ? "#ff5a5a" : "#ffd76a") : "#9a9a9a";   // 未开门灰 / 进行琥珀 / 最后1分钟红
   }
 
   // 难度 / 地图选择
@@ -1260,7 +1279,7 @@
     if (!isUnlocked(game.difficulty)){ game.difficulty="easy"; renderDiffButtons(); }   // 保险：难度被锁回简单
     game.cfg=DIFF[game.difficulty]; game.theme=MAPS[game.map]; game.skin=CHARS[game.char];
     game.hp=100;
-    game.coins=0; game.time=0; game.skillCd=0; game.skillT=0; game.scareFx=0; game.winner="";
+    game.coins=0; game.time=0; game.worldT=0; game.skillCd=0; game.skillT=0; game.scareFx=0; game.winner="";
     game.eatT=0; game.belly=[]; game.swingFx=0; game.healChan=null; game.reviveChan=null;
     game.huntStarted=false; game.enterT=0; game.roundCounted=false; game.carOpen=false; game.spawnT=0;
     game.aibiCaught=0; game.aibiCd=0; game.hasAibi=false; game.chestFullMsgT=0; chests=[];
@@ -1381,6 +1400,17 @@
     finishRound();
     game.winner="撤离成功！";
     showOverlay("撤离成功！", "包里宝物："+haulTxt+"<br>"+coinTxt+" · 总计 ¥"+total.toLocaleString()+" / 目标 ¥"+evacuateTarget().toLocaleString()+" · 用时 "+Math.floor(game.time)+" 秒","再玩一次",true);
+  }
+  function timeOutFail(){   // 午夜 24:00 未撤离成功：撤离失败（本局不结算惊魂币入账）
+    if (game.state===STATE.WIN || game.state===STATE.OVER) return;
+    releaseAllGrabs();
+    game.carryHajime=false; game.hajimeTarget=null;
+    game.healChan=null; game.reviveChan=null; game.gateChan=null;
+    game.state=STATE.OVER;
+    finishRound();
+    hideSpectate();
+    game.winner="撤离失败！";
+    showOverlay("撤离失败！", "⏰ 午夜 24:00 已到，还没撤离成功……<br>你和队友被永远留在了惊魂之地（本局惊魂币不结算）","再玩一次",true);
   }
   function eatGhost(eater, m, belly){
     if (m.r >= eater.r+8){ addFloat(m.x, m.y-20, "吃不掉！", "#ff8888"); return; }
@@ -1526,6 +1556,9 @@
   function update(dt) {
     if (game.state!==STATE.PLAYING && game.state!==STATE.DEAD) return;
     game.time+=dt;
+    // 世界时钟：车门开启后 1 秒 = 1 分钟；走到 24:00（NIGHT_LEN 秒）还没撤离成功 → 撤离失败
+    if (game.carOpen) game.worldT+=dt;
+    if (game.carOpen && game.worldT>=NIGHT_LEN){ timeOutFail(); return; }
     const cfg=game.cfg;
     const ch=CHARS[game.char];
 
@@ -3184,6 +3217,7 @@
     }
 
     updateSkillHud();
+    updateClockHud();
     renderHandInBtn();   // 随玩家位置刷新上交按钮（回车里才可用）
 
     // 队友状态 HUD
@@ -3328,6 +3362,15 @@
           ctx.fillStyle = isAtCar() ? "#7cfc9b" : "#ffd76a";
           ctx.font="bold 14px sans-serif";
           ctx.fillText(isAtCar() ? "按 X 撤离！" : "撤离金额已达成！回到车里按 X 撤离", player.x, player.y-56);
+        }
+      }
+      // 午夜倒数警告：距 24:00 不足 60 秒（1 秒 = 1 分钟）→ 闪烁催促回车里撤离
+      if (game.carOpen){
+        const rem = NIGHT_LEN - game.worldT;
+        if (rem>0 && rem<=60){
+          ctx.fillStyle = (Math.floor(performance.now()/400)%2) ? "#ff5a5a" : "#fff2c9";
+          ctx.font="bold 15px sans-serif";
+          ctx.fillText("⏰ 距午夜 24:00 还剩 "+Math.ceil(rem)+" 秒 · 快回车里按 X 撤离！", player.x, player.y-70);
         }
       }
       ctx.textAlign="left";
