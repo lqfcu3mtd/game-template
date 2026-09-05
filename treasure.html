@@ -166,7 +166,7 @@
             <button class="start" id="ov-btn" data-page-node-id="hQHH9wcotq4WPSlx8O2pxF">开始冒险</button>
             <button class="start" id="shopBtn" data-page-node-id="ylvKKzNvxP1vHwHEWFPVUp">商城</button>
           </div>
-          <p class="hint" data-page-node-id="ARKwtovTqTH9H7yLizDSZr">WASD 移动 · 空格跳跃（躲火焰） · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头 · E 开门/刷卡 · P 暂停 · R 换图<br data-page-node-id="Nf3HxGtkUrAUMGKT2EQmHF">宝物在背包里（快捷栏/背包/宠物包）· 回车里点「上交宝物」或按 V 上交 · 金额达标按 X 撤离 · 小心偷偷猫偷你包里的宝物<br data-page-node-id="RqMafEvsoBCqJFzBQkGOnu">⏰ 车门开启后时钟 20:00 开走（1 秒 = 1 分钟）：必须在 24:00 前回车里按 X 撤离，否则撤离失败<br data-page-node-id="0g6KsKGPLskqsIsJ7ODkU2">· 平静的抱抱熊按 E 缝补 10 秒可得宝物「抱抱熊」，快捷栏装备后按 U 使用：无敌 60 秒、怪物无视你</p>
+          <p class="hint" data-page-node-id="ARKwtovTqTH9H7yLizDSZr">WASD 移动 · 空格跳跃（躲火焰） · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头 · E 开门/刷卡 · P 暂停 · R 换图<br data-page-node-id="Nf3HxGtkUrAUMGKT2EQmHF">宝物在背包里（快捷栏/背包/宠物包）· 回车里点「上交宝物」或按 V 上交 · 金额达标按 X 撤离 · 小心偷偷猫偷你包里的宝物<br data-page-node-id="RqMafEvsoBCqJFzBQkGOnu">⏰ 开场 18 秒后车门自动开启，时钟 20:00 开走（1 秒 = 1 分钟）：必须在 24:00 前回车里按 X 撤离，否则撤离失败<br data-page-node-id="0g6KsKGPLskqsIsJ7ODkU2">· 平静的抱抱熊按 E 缝补 10 秒可得宝物「抱抱熊」，快捷栏装备后按 U 使用：无敌 60 秒、怪物无视你</p>
         </div>
       </div>
     </div>
@@ -1614,6 +1614,11 @@
           }
         }
       }
+    }
+
+    // 车门自动开启：18 秒安全期结束自动打开（时钟 20:00 开走 · 24:00 前须回车里撤离）
+    if (game.state===STATE.PLAYING && game.theme.mech==="carwall" && !game.carOpen && game.time>=18){
+      openCarDoor();
     }
 
     // 开场阶段：18 秒后开门，进入大门才开始寻宝
