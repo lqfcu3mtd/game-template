@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="zh-CN" data-page-node-id="OzEhsDJOXxNTheRQtjz4pI">
+<head data-page-node-id="g1uGbkLv92xVjseSRpDXFM">
+<meta charset="UTF-8" data-page-node-id="DCZB3T5sMFh4xTsse3JkQV">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="2Z2Zjsw85zvXqBgs1kQ3QO">
 <title>蛋仔惊魂寻宝队 · 小游戏模板</title>
 <style>
   :root { --bg:#15131f; --panel:#221d33; --text:#ece8f5; --accent:#ff7ac6; }
@@ -83,157 +83,157 @@
   .shop-msg { font-size:12px; min-height:16px; margin-bottom:10px; color:#ffd76a; }
 </style>
 </head>
-<body>
-  <h1>蛋仔惊魂寻宝队</h1>
-  <div class="sub">选难度 · 选地图 · 带着蛋仔去寻宝</div>
+<body data-page-node-id="l0j5ZnCFZW2fBh59KWAIQi">
+  <h1 data-page-node-id="KzKi1446yvMZwGiZOApCBv">蛋仔惊魂寻宝队</h1>
+  <div class="sub" data-page-node-id="iehqtURgO9nAyO4YShhESO">选难度 · 选地图 · 带着蛋仔去寻宝</div>
 
-  <div class="game-wrap">
-    <div class="hud">
-      <span>角色 <b id="charName">蛋小黄</b></span>
-      <span>队友 <b id="mates">3/3</b></span>
-      <span class="hp">血量 <b id="hp">100</b></span>
-      <span>惊魂币 <b id="coins">0</b></span>
-      <span>宝物 <b id="haulCount">0</b></span>
-      <span>技能 <b id="skill">疾跑 ·就绪</b></span>
-      <span>时间 <b id="time">0</b>s · 🕗<b id="clock">20:00</b></span>
-      <span id="evac" style="color:#7cfc9b">撤离 ¥0 / ¥0</span>
+  <div class="game-wrap" data-page-node-id="9wRyoNBJE5YUJSoBd7RlBG">
+    <div class="hud" data-page-node-id="JSIa21NbewAPN89En9rymH">
+      <span data-page-node-id="SKQbvZ4qeLJK5AHZB3nn24">角色 <b id="charName" data-page-node-id="ntLveIMgDPtW8OXXBFYLL5">蛋小黄</b></span>
+      <span data-page-node-id="q7REkU1UuNPb3ti4AjeWpE">队友 <b id="mates" data-page-node-id="dUlsPSacK6mhkQ4gFycOxg">3/3</b></span>
+      <span class="hp" data-page-node-id="0qTLoqDqJBtvlZYXOttwOr">血量 <b id="hp" data-page-node-id="ziRAqcJb6aGYtKUJfM1IIn">100</b></span>
+      <span data-page-node-id="cSu8Ay1xEMeXKpUV2zN4Kv">惊魂币 <b id="coins" data-page-node-id="1ReablNRDxhmBtwYvozt4M">0</b></span>
+      <span data-page-node-id="iHcydKRVzfX73J4ybDrHTw">宝物 <b id="haulCount" data-page-node-id="rhWDBcl7W4GbyvAJx0XgdT">0</b></span>
+      <span data-page-node-id="cbC0K82dwTkQCIhFzIYzK8">技能 <b id="skill" data-page-node-id="wO9ru0hbVv9KezWC59xTZp">疾跑 ·就绪</b></span>
+      <span data-page-node-id="ktJa75ErFtGn6rxUGObae6">时间 <b id="time" data-page-node-id="ycTsUcn91UzD6D4kSSQUhS">0</b>s · 🕗<b id="clock" data-page-node-id="yPLVJyHGmbg499XXprXffE">20:00</b></span>
+      <span id="evac" style="color:#7cfc9b" data-page-node-id="LKBolQQXjzGF724wLYcrjr">撤离 ¥0 / ¥0</span>
     </div>
-    <div class="stage">
-      <canvas id="game" width="660" height="484"></canvas>
-      <div class="overlay" id="overlay">
-        <div class="panel">
-          <h2 id="ov-title">蛋仔惊魂寻宝队</h2>
-          <p id="ov-text">选难度选地图，捡惊魂币、开宝箱、搜刮地上宝物（进背包），<br>回车里点「上交宝物」换惊魂币，撤离金额达标后按 X 撤离！<br>车门开启后世界时钟从 20:00 走到 24:00（1 秒 = 1 分钟），午夜前没撤离成功就算撤离失败</p>
-          <div id="picks">
-            <div class="pick">
-              <div class="pick-label">难度</div>
-              <div class="pick-row" id="diff-row">
-                <button class="pick-btn" data-diff="easy">简单</button>
-                <button class="pick-btn active" data-diff="normal">普通</button>
-                <button class="pick-btn" data-diff="hard">困难</button>
+    <div class="stage" data-page-node-id="1vivD1HtvWFNyaaOxpfJla">
+      <canvas id="game" width="660" height="484" data-page-node-id="ZvtwK4BwdQOrnIoF4W2mv0"></canvas>
+      <div class="overlay" id="overlay" data-page-node-id="K1nks3rVHTbsFqGdAzMr0H">
+        <div class="panel" data-page-node-id="eB9RMv7e4GH6vAikPBtVLx">
+          <h2 id="ov-title" data-page-node-id="fzO1NYTamx4QOeVyqIsD0I">蛋仔惊魂寻宝队</h2>
+          <p id="ov-text" data-page-node-id="qOGyIWdjQUGaUGpcM74Okn">选难度选地图，捡惊魂币、开宝箱、搜刮地上宝物（进背包），<br data-page-node-id="WbGwCZ9ZVhHo8n3kGVz2xi">回车里点「上交宝物」换惊魂币，撤离金额达标后按 X 撤离！<br data-page-node-id="VY7JmkcrgIbqq4kshOwjWu">车门开启后世界时钟从 20:00 走到 24:00（1 秒 = 1 分钟），午夜前没撤离成功就算撤离失败</p>
+          <div id="picks" data-page-node-id="Hoac66z6JtDINpbBBvIKjT">
+            <div class="pick" data-page-node-id="QImW70yjCmNgjD9ZraQ1aC">
+              <div class="pick-label" data-page-node-id="o0cm6FqtKJxOYaHyhLHnMe">难度</div>
+              <div class="pick-row" id="diff-row" data-page-node-id="e0ezC2Z21LuYcY3kGsuEYk">
+                <button class="pick-btn" data-diff="easy" data-page-node-id="1LgA02NUv4BWR54LifG4pO">简单</button>
+                <button class="pick-btn active" data-diff="normal" data-page-node-id="m4Vj5BcnqIseKNN3Fr5slg">普通</button>
+                <button class="pick-btn" data-diff="hard" data-page-node-id="EgVgpQP5fyimo0Mntua1sm">困难</button>
               </div>
             </div>
-            <div class="pick">
-              <div class="pick-label">地图</div>
-              <div class="pick-row" id="map-row">
-                <button class="pick-btn active" data-map="castle">温斯洛古堡</button>
-                <button class="pick-btn" data-map="market">好蛋来超市</button>
-                <button class="pick-btn" data-map="asylum">怪蛋疯人院</button>
+            <div class="pick" data-page-node-id="clyqs1v7EARlCAqB1PACjG">
+              <div class="pick-label" data-page-node-id="tn3TP8Cg5gOaPhHOIvlYpT">地图</div>
+              <div class="pick-row" id="map-row" data-page-node-id="Rof28Al9JvWotMVIW0E6Ar">
+                <button class="pick-btn active" data-map="castle" data-page-node-id="SJvt5zNl7nICGA9vtcoXlZ">温斯洛古堡</button>
+                <button class="pick-btn" data-map="market" data-page-node-id="mIMtfo5IxrbUkorvHRofF2">好蛋来超市</button>
+                <button class="pick-btn" data-map="asylum" data-page-node-id="6BjZTdRuD59XJGCu6FE7IO">怪蛋疯人院</button>
               </div>
             </div>
-            <div class="pick">
-              <div class="pick-label">角色</div>
-              <div class="pick-row" id="char-row">
-                <button class="pick-btn active" data-char="huang">蛋小黄</button>
-                <button class="pick-btn" data-char="puff">泡芙</button>
-                <button class="pick-btn" data-char="duoduo">毛哆哆</button>
-                <button class="pick-btn" data-char="lv">蛋小绿</button>
+            <div class="pick" data-page-node-id="A5zOD6Bk3GQqUJJnp8wdDN">
+              <div class="pick-label" data-page-node-id="FZZJzKXAsHA5vPMP3h7epx">角色</div>
+              <div class="pick-row" id="char-row" data-page-node-id="BW2wKhAjqp3FkVwN5rGMyD">
+                <button class="pick-btn active" data-char="huang" data-page-node-id="3rFk7i3WMtys1dmGNT69Uo">蛋小黄</button>
+                <button class="pick-btn" data-char="puff" data-page-node-id="KgkRqnrAuCRFJblstyAwqt">泡芙</button>
+                <button class="pick-btn" data-char="duoduo" data-page-node-id="9HZOTHHnbLiNYrH96Ibvp0">毛哆哆</button>
+                <button class="pick-btn" data-char="lv" data-page-node-id="IIp8LbBjTRAXrJtonH4Za2">蛋小绿</button>
               </div>
-              <div class="pick-skill" id="charSkill"></div>
+              <div class="pick-skill" id="charSkill" data-page-node-id="cLE0KfY3yHaZQ9ITQQmqVF"></div>
             </div>
-            <div class="pick">
-              <div class="pick-label">队友数量</div>
-              <div class="pick-row" id="matecount-row">
-                <button class="pick-btn" data-mc="0">0个队友</button>
-                <button class="pick-btn" data-mc="1">1个队友</button>
-                <button class="pick-btn" data-mc="2">2个队友</button>
-                <button class="pick-btn active" data-mc="3">3个队友</button>
+            <div class="pick" data-page-node-id="Y1P4R956E4lCPU90vtPn0b">
+              <div class="pick-label" data-page-node-id="1zqSuEXVDOsGeniC6gz9qr">队友数量</div>
+              <div class="pick-row" id="matecount-row" data-page-node-id="dvVifOZE3QFqyV9RGHlSHc">
+                <button class="pick-btn" data-mc="0" data-page-node-id="v4dwvqjN6Ut5n1DVLwFp4R">0个队友</button>
+                <button class="pick-btn" data-mc="1" data-page-node-id="yzSg5DLGFNBX2GPsgWR0KS">1个队友</button>
+                <button class="pick-btn" data-mc="2" data-page-node-id="su52p3adQ4oxsVABfAHN5n">2个队友</button>
+                <button class="pick-btn active" data-mc="3" data-page-node-id="rsAgzDP3VeP2ZUDqtXOM7z">3个队友</button>
               </div>
             </div>
-            <div class="pick">
-              <div class="pick-label">队友角色（可重复选择）</div>
-              <div class="pick-row" id="mate-row-0"><span class="mate-label">队友1</span>
-                <button class="pick-btn" data-mi="0" data-mchar="huang">蛋小黄</button>
-                <button class="pick-btn" data-mi="0" data-mchar="puff">泡芙</button>
-                <button class="pick-btn" data-mi="0" data-mchar="duoduo">毛哆哆</button>
-                <button class="pick-btn" data-mi="0" data-mchar="lv">蛋小绿</button>
+            <div class="pick" data-page-node-id="jpSiUvp4CwRBd5qUV0WMRX">
+              <div class="pick-label" data-page-node-id="N8jlUxPEktC5RKAk9DTgWc">队友角色（可重复选择）</div>
+              <div class="pick-row" id="mate-row-0" data-page-node-id="wQYBu01sbgWsgehYXeAPRh"><span class="mate-label" data-page-node-id="CrZcvraxw9qEqSFiR7xde0">队友1</span>
+                <button class="pick-btn" data-mi="0" data-mchar="huang" data-page-node-id="TaUMtqjbZkWjIFHaoZI3Eq">蛋小黄</button>
+                <button class="pick-btn" data-mi="0" data-mchar="puff" data-page-node-id="gEk3ZGYXUjzhU33skOedFD">泡芙</button>
+                <button class="pick-btn" data-mi="0" data-mchar="duoduo" data-page-node-id="hmITYC4mG5yhif44R8bEOB">毛哆哆</button>
+                <button class="pick-btn" data-mi="0" data-mchar="lv" data-page-node-id="rRLmk279w8QDICcQnQGBHX">蛋小绿</button>
               </div>
-              <div class="pick-row" id="mate-row-1"><span class="mate-label">队友2</span>
-                <button class="pick-btn" data-mi="1" data-mchar="huang">蛋小黄</button>
-                <button class="pick-btn" data-mi="1" data-mchar="puff">泡芙</button>
-                <button class="pick-btn" data-mi="1" data-mchar="duoduo">毛哆哆</button>
-                <button class="pick-btn" data-mi="1" data-mchar="lv">蛋小绿</button>
+              <div class="pick-row" id="mate-row-1" data-page-node-id="XPgBSqFVCl8cOVnuJNX0fb"><span class="mate-label" data-page-node-id="pbnbffHNd0aRVqQQ6ZQr5O">队友2</span>
+                <button class="pick-btn" data-mi="1" data-mchar="huang" data-page-node-id="0R3MdtRsLXItC3tJn0RHpo">蛋小黄</button>
+                <button class="pick-btn" data-mi="1" data-mchar="puff" data-page-node-id="qHZLtEjB6wfQ32uKx6xloi">泡芙</button>
+                <button class="pick-btn" data-mi="1" data-mchar="duoduo" data-page-node-id="kmJoBe6tG6YuGnhfq8R9Uc">毛哆哆</button>
+                <button class="pick-btn" data-mi="1" data-mchar="lv" data-page-node-id="gM5IQBoAjNTqCiuH42YQ09">蛋小绿</button>
               </div>
-              <div class="pick-row" id="mate-row-2"><span class="mate-label">队友3</span>
-                <button class="pick-btn" data-mi="2" data-mchar="huang">蛋小黄</button>
-                <button class="pick-btn" data-mi="2" data-mchar="puff">泡芙</button>
-                <button class="pick-btn" data-mi="2" data-mchar="duoduo">毛哆哆</button>
-                <button class="pick-btn" data-mi="2" data-mchar="lv">蛋小绿</button>
+              <div class="pick-row" id="mate-row-2" data-page-node-id="qXkm3e5jHPtd1D3KaHy870"><span class="mate-label" data-page-node-id="juZK1F5lRQKTG3wWszhdPq">队友3</span>
+                <button class="pick-btn" data-mi="2" data-mchar="huang" data-page-node-id="hSe12vaYtTq5ABn7HPhzdA">蛋小黄</button>
+                <button class="pick-btn" data-mi="2" data-mchar="puff" data-page-node-id="FhEaHLkerFzkoaWos5Tomd">泡芙</button>
+                <button class="pick-btn" data-mi="2" data-mchar="duoduo" data-page-node-id="xjWmXNIY1kk36NPBSEe53j">毛哆哆</button>
+                <button class="pick-btn" data-mi="2" data-mchar="lv" data-page-node-id="KqoK1dKz1gvl6U4hUsg0T7">蛋小绿</button>
               </div>
             </div>
           </div>
-          <div class="btn-row">
-            <button class="start" id="ov-btn">开始冒险</button>
-            <button class="start" id="shopBtn">商城</button>
+          <div class="btn-row" data-page-node-id="z064SwwTtmozrxxkAX7JF8">
+            <button class="start" id="ov-btn" data-page-node-id="hQHH9wcotq4WPSlx8O2pxF">开始冒险</button>
+            <button class="start" id="shopBtn" data-page-node-id="ylvKKzNvxP1vHwHEWFPVUp">商城</button>
           </div>
-          <p class="hint">WASD 移动 · 空格跳跃（躲火焰） · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头 · E 开门/刷卡 · P 暂停 · R 换图<br>宝物在背包里（快捷栏/背包/宠物包）· 回车里点「上交宝物」或按 V 上交 · 金额达标按 X 撤离 · 小心偷偷猫偷你包里的宝物<br>⏰ 车门开启后时钟 20:00 开走（1 秒 = 1 分钟）：必须在 24:00 前回车里按 X 撤离，否则撤离失败</p>
+          <p class="hint" data-page-node-id="ARKwtovTqTH9H7yLizDSZr">WASD 移动 · 空格跳跃（躲火焰） · J 技能 · H 挥叉 · T 扔出 · U 道具 · G 放下 · Q 回头 · E 开门/刷卡 · P 暂停 · R 换图<br data-page-node-id="Nf3HxGtkUrAUMGKT2EQmHF">宝物在背包里（快捷栏/背包/宠物包）· 回车里点「上交宝物」或按 V 上交 · 金额达标按 X 撤离 · 小心偷偷猫偷你包里的宝物<br data-page-node-id="RqMafEvsoBCqJFzBQkGOnu">⏰ 车门开启后时钟 20:00 开走（1 秒 = 1 分钟）：必须在 24:00 前回车里按 X 撤离，否则撤离失败<br data-page-node-id="0g6KsKGPLskqsIsJ7ODkU2">· 平静的抱抱熊按 E 缝补 10 秒可得宝物「抱抱熊」，快捷栏装备后按 U 使用：无敌 60 秒、怪物无视你</p>
         </div>
       </div>
     </div>
     <!-- 背包：3 快捷栏（常显）+ 3 背包格（点背包按钮展开） -->
-    <div class="inv">
-      <div class="inv-bar">
-        <div class="inv-hot" id="invHot"></div>
-        <button class="inv-btn" id="bagBtn">背包</button>
-        <button class="inv-btn" id="handInBtn" style="color:#7cfc9b">上交宝物(0)</button>
+    <div class="inv" data-page-node-id="sn46rQut6B7WCTunfUmovp">
+      <div class="inv-bar" data-page-node-id="rRDPVI55RBHRngVWDs9mht">
+        <div class="inv-hot" id="invHot" data-page-node-id="QecncZorZlAmLH8cngKDH4"></div>
+        <button class="inv-btn" id="bagBtn" data-page-node-id="pGPO8w5pAFgh9SFtYFR90c">背包</button>
+        <button class="inv-btn" id="handInBtn" style="color:#7cfc9b" data-page-node-id="CFGD2u6CK6FPZsXiDODCNM">上交宝物(0)</button>
       </div>
-      <div class="inv-bag" id="invBag" style="display:none"></div>
-      <div class="inv-bag" id="invPetWrap" style="display:none"><span class="inv-label">宠物背包</span><div id="invPet"></div></div>
+      <div class="inv-bag" id="invBag" style="display:none" data-page-node-id="dIyyCkZymgzcu2FCIKCNrz"></div>
+      <div class="inv-bag" id="invPetWrap" style="display:none" data-page-node-id="Peggt03WNQLtCCb4OoOU6f"><span class="inv-label" data-page-node-id="GUB4t66uS2D2YMcqZ4RBUU">宠物背包</span><div id="invPet" data-page-node-id="MP5D9fSrvmYAXHgmHTJbvN"></div></div>
     </div>
     <!-- 阵亡观战 UI -->
-    <div class="spectate" id="spectate" style="display:none">
-      <button class="spec-btn spec-x" id="specX" title="直接开始下一局">✕</button>
-      <div class="spec-bar">
-        <button class="spec-btn" id="specLeft">◀</button>
-        <span id="specName">观看中</span>
-        <button class="spec-btn" id="specRight">▶</button>
+    <div class="spectate" id="spectate" style="display:none" data-page-node-id="eZKu1wtC8rK9ioUy3cNuD6">
+      <button class="spec-btn spec-x" id="specX" title="直接开始下一局" data-page-node-id="VWmlwfUH2OyAPXPe57oF7X">✕</button>
+      <div class="spec-bar" data-page-node-id="Dc6A25x6NePfpEYoHyFC71">
+        <button class="spec-btn" id="specLeft" data-page-node-id="ZmAam3AkIVSl8xOZZjFQQ2">◀</button>
+        <span id="specName" data-page-node-id="h7L8Z00xYHEOgCR7zfpnG0">观看中</span>
+        <button class="spec-btn" id="specRight" data-page-node-id="YY5VhYrhEFDZWd8vil5uJB">▶</button>
       </div>
-      <div class="spec-hint">你阵亡了 · 队友正赶来用返魂药水救你，或点 ✕ 开始下一局</div>
+      <div class="spec-hint" data-page-node-id="N0lp93areizNymaYRwZCAo">你阵亡了 · 队友正赶来用返魂药水救你，或点 ✕ 开始下一局</div>
     </div>
   </div>
 
   <!-- 商城弹窗 -->
-  <div class="shop-mask" id="shopMask" style="display:none">
-    <div class="shop">
-      <h3>蛋蛋商城</h3>
-      <div class="shop-wallet">总惊魂币 <b id="wallet">0</b></div>
-      <div class="shop-item">
-        <b>鱼叉</b><br>
-        <span style="font-size:12px;color:#a99fc4">放入背包/快捷栏 · 无限挥砍 · 近战两叉击杀 · 被打死会掉落</span>
-        <div class="item-price">25000 惊魂币 / 把</div>
-        <div class="item-owned">拥有 <b id="harpoonOwned">0</b> 把</div>
-        <button class="start" id="buyHarpoon" style="padding:8px 22px;font-size:14px">购买</button>
+  <div class="shop-mask" id="shopMask" style="display:none" data-page-node-id="qD9yc6nPeTy8d8ireTYDuh">
+    <div class="shop" data-page-node-id="pX70FhcrbrD5yG2ShT9c15">
+      <h3 data-page-node-id="a3zuoMXf4N4Q5PvwAriEOR">蛋蛋商城</h3>
+      <div class="shop-wallet" data-page-node-id="PExES28RRi11ENoaRKFSsS">总惊魂币 <b id="wallet" data-page-node-id="MBKx19BAXWiekv0BIqCZUa">0</b></div>
+      <div class="shop-item" data-page-node-id="sHispDU1T5xZd6dHgHYNLm">
+        <b data-page-node-id="sZodShTPxFjg2G0KQjEoNg">鱼叉</b><br data-page-node-id="WF1auTQUoBUTXehIhEbfX7">
+        <span style="font-size:12px;color:#a99fc4" data-page-node-id="XlA5emD59uczJabpbFcqOZ">放入背包/快捷栏 · 无限挥砍 · 近战两叉击杀 · 被打死会掉落</span>
+        <div class="item-price" data-page-node-id="JIkzPJa5gEWJqMSopk8acp">25000 惊魂币 / 把</div>
+        <div class="item-owned" data-page-node-id="mbSCmzPFnWCGCkwcw97sPJ">拥有 <b id="harpoonOwned" data-page-node-id="jljqMOIpVoxYxD5ABoXtpZ">0</b> 把</div>
+        <button class="start" id="buyHarpoon" style="padding:8px 22px;font-size:14px" data-page-node-id="yqcYonFGUmYLJ8XzlaEJDl">购买</button>
       </div>
-      <div class="shop-item">
-        <b>返魂药水</b><br>
-        <span style="font-size:12px;color:#a99fc4">复活一位阵亡队友：靠近其尸体引导 5 秒，复活后只剩 50 血</span>
-        <div class="item-price">10000 惊魂币 / 瓶</div>
-        <div class="item-owned">拥有 <b id="reviveOwned">0</b> 瓶</div>
-        <button class="start" id="buyRevive" style="padding:8px 22px;font-size:14px">购买</button>
+      <div class="shop-item" data-page-node-id="rteAGS8uaA2Uoep3S5D0RR">
+        <b data-page-node-id="VKFBatYSAQvzY5UU9rb8hd">返魂药水</b><br data-page-node-id="AY4Sl5pL5dAL9VHa0lUbJ9">
+        <span style="font-size:12px;color:#a99fc4" data-page-node-id="pRhqbu8AFdQ7lCk9MVeppG">复活一位阵亡队友：靠近其尸体引导 5 秒，复活后只剩 50 血</span>
+        <div class="item-price" data-page-node-id="eUiwjuy8aAhSsZcFWYNVD2">10000 惊魂币 / 瓶</div>
+        <div class="item-owned" data-page-node-id="gClCKUYKn2U84UAu7s0QG2">拥有 <b id="reviveOwned" data-page-node-id="yISVrmLkI3c3BTktrovGTI">0</b> 瓶</div>
+        <button class="start" id="buyRevive" style="padding:8px 22px;font-size:14px" data-page-node-id="pB3hwhjn9B0a80UtELZ965">购买</button>
       </div>
-      <div class="shop-item">
-        <b>地窖徽章</b><br>
-        <span style="font-size:12px;color:#a99fc4">装备到快捷栏后按 U 使用：瞬间传送回车里（每次使用需 45000 惊魂币维修）</span>
-        <div class="item-price">90000 惊魂币 / 枚</div>
-        <div class="item-owned">拥有 <b id="badgeOwned">0</b> 枚</div>
-        <button class="start" id="buyBadge" style="padding:8px 22px;font-size:14px">购买</button>
+      <div class="shop-item" data-page-node-id="xWxJ5z1wG3C6IozKl5kzVF">
+        <b data-page-node-id="ZiB7zvjqMBDDX9PWdiXsX0">地窖徽章</b><br data-page-node-id="zjVCGxO9jh328EzfFbO2L4">
+        <span style="font-size:12px;color:#a99fc4" data-page-node-id="lhWeTkRX0E7FJ1gkOECzlG">装备到快捷栏后按 U 使用：瞬间传送回车里（每次使用需 45000 惊魂币维修）</span>
+        <div class="item-price" data-page-node-id="IhlfdBQy4X48vleIHeDN8E">90000 惊魂币 / 枚</div>
+        <div class="item-owned" data-page-node-id="gv2NayH81ZPqwncP84AaGs">拥有 <b id="badgeOwned" data-page-node-id="KXKVYBQzfWNGwaS5aNAVj1">0</b> 枚</div>
+        <button class="start" id="buyBadge" style="padding:8px 22px;font-size:14px" data-page-node-id="yBFscFnLoK0clCo8CVM8As">购买</button>
       </div>
-      <div class="shop-item">
-        <b>低级会员</b><br>
-        <span style="font-size:12px;color:#a99fc4">快捷栏 +1 格（共 7 格）</span>
-        <div class="item-price">20 惊魂币</div>
-        <div class="item-owned" id="memberBasicOwned"></div>
-        <button class="start" id="buyBasic" style="padding:8px 22px;font-size:14px">购买</button>
+      <div class="shop-item" data-page-node-id="KTaWuUEXX1S5XjO2ksFbJH">
+        <b data-page-node-id="WWCVrABT6GCUgRXdiFqFDX">低级会员</b><br data-page-node-id="Otggx0ZH2E3I6KBzbfAhQ1">
+        <span style="font-size:12px;color:#a99fc4" data-page-node-id="xJphrwNft5LFnuEUgp9AIv">快捷栏 +1 格（共 7 格）</span>
+        <div class="item-price" data-page-node-id="jnCyW0L0RAwBiPa878CL6q">20 惊魂币</div>
+        <div class="item-owned" id="memberBasicOwned" data-page-node-id="I1zCOB0aKRniDbR1R6t3S8"></div>
+        <button class="start" id="buyBasic" style="padding:8px 22px;font-size:14px" data-page-node-id="gIabGJf0LjUTOYCQg8Z0Rf">购买</button>
       </div>
-      <div class="shop-item">
-        <b>高级会员</b><br>
-        <span style="font-size:12px;color:#a99fc4">快捷栏 +1、宠物背包 1 格、小狗跟随（共 8 格）</span>
-        <div class="item-price">30 惊魂币</div>
-        <div class="item-owned" id="memberPremiumOwned"></div>
-        <button class="start" id="buyPremium" style="padding:8px 22px;font-size:14px">购买</button>
+      <div class="shop-item" data-page-node-id="AofD7q85NQD9HULIV76Og4">
+        <b data-page-node-id="n1DZfOkJjb1DFgW06fRuxR">高级会员</b><br data-page-node-id="MyjnMcshkNb4jjiTPgbLBE">
+        <span style="font-size:12px;color:#a99fc4" data-page-node-id="EqKt8OVeCXDaRivQ3HCbGF">快捷栏 +1、宠物背包 1 格、小狗跟随（共 8 格）</span>
+        <div class="item-price" data-page-node-id="yfBDYhABurXHBSgZjE3Jhx">30 惊魂币</div>
+        <div class="item-owned" id="memberPremiumOwned" data-page-node-id="DCmAYsY36YekdXhjS8YQKJ"></div>
+        <button class="start" id="buyPremium" style="padding:8px 22px;font-size:14px" data-page-node-id="GdD4AeRv43x7EhrA0LoHYX">购买</button>
       </div>
-      <div class="shop-msg" id="shopMsg"></div>
-      <button class="start" id="shopClose" style="padding:8px 26px;font-size:14px">返回</button>
+      <div class="shop-msg" id="shopMsg" data-page-node-id="995OjBBy9qH2grGw7PahAk"></div>
+      <button class="start" id="shopClose" style="padding:8px 26px;font-size:14px" data-page-node-id="TH7RNTEBklw6vcXFfjU1td">返回</button>
     </div>
   </div>
 
@@ -398,6 +398,7 @@
     spectate: 0, potReviveT: 0, huntStarted: false, enterT: 0, roundCounted: false,
     carOpen: false, cartPush: false, cartMode: false, gateChan: null, ridingCart: null, inSewer: false, spawnT: 0,   // 车门 / 购物车 / 进门鉴 / 下水道 / 刷怪计时
     floor: 1, carryHajime: false, hajimeTarget: null,   // 古堡楼层 / 抱起哈基米带路
+    bearGodT: 0, mendChan: null,   // 抱抱熊护体（60s 无敌·怪物无视）/ 缝补引导
     aibiCaught: 0, aibiCd: 0, hasAibi: false, chestFullMsgT: 0,   // 黄金艾比捕获 / 开箱背包满提示冷却
     teammates: ["puff","duoduo","lv"], matesCustomized: false, mateCount: 3,
     difficulty: "easy", map: "castle", char: "huang",
@@ -665,6 +666,7 @@
       let done=false;
       if (hajimeInteract()) done=true;                 // 抱起/放下哈基米（带路找宝物）
       if (!done && stairInteract()) done=true;         // 古堡楼梯口换层
+      if (!done && mendInteract()) done=true;          // 缝补抱抱熊（10 秒得宝物）/ 取消缝补
       if (!done && game.theme.mech==="carwall" && game.time>=18 && !game.carOpen){ openCarDoor(); done=true; }
       if (!done && game.theme.cart && cartInteract()) done=true;
       if (!done) gateInteract();
@@ -1191,7 +1193,7 @@
     const up = nf>game.floor;
     if (game.cartPush) releaseCart(game.cart);
     releaseAllGrabs();   // 松手：熊不跨层
-    game.healChan=null; game.reviveChan=null; game.gateChan=null;
+    game.healChan=null; game.reviveChan=null; game.gateChan=null; game.mendChan=null;
     if (game.carryHajime){                          // 抱着的哈基米一起上楼
       const h = monsters.find(m=>m.type==="hajime");
       if (h){ const idx=monsters.indexOf(h); if (idx>=0) monsters.splice(idx,1); h.x=player.x+26; h.y=player.y; monstersByFloor[nf-1].push(h); }
@@ -1248,6 +1250,20 @@
     return false;
   }
 
+  function mendInteract(){   // E 键：缝补平静的抱抱熊（10 秒换取宝物「抱抱熊」）；引导中再按 E 取消
+    if (game.state!==STATE.PLAYING) return false;
+    if (game.mendChan){
+      game.mendChan=null;
+      addFloat(player.x, player.y-26, "停止了缝补", "#9ecbff");
+      return true;
+    }
+    const b=monsters.find(m=>m.type==="bear" && m.berserkT<=0 && !m.grabTarget);
+    if (!b || Math.abs(b.x-player.x)>100) return false;   // 只看水平距离：站在高台上够得着也能补
+    game.mendChan={ bear:b, t:10 };
+    addFloat(player.x, player.y-28, "开始缝补抱抱熊…10 秒（小心小幽灵偷袭）", "#cfdcae");
+    return true;
+  }
+
   function hitBear(m, attacker){   // 抱抱熊被打：打不死，累计 2 次狂暴
     m.anger=(m.anger||0)+1;
     m.flash=0.35;
@@ -1280,7 +1296,7 @@
     game.cfg=DIFF[game.difficulty]; game.theme=MAPS[game.map]; game.skin=CHARS[game.char];
     game.hp=100;
     game.coins=0; game.time=0; game.worldT=0; game.skillCd=0; game.skillT=0; game.scareFx=0; game.winner="";
-    game.eatT=0; game.belly=[]; game.swingFx=0; game.healChan=null; game.reviveChan=null;
+    game.eatT=0; game.belly=[]; game.swingFx=0; game.healChan=null; game.reviveChan=null; game.mendChan=null; game.bearGodT=0;
     game.huntStarted=false; game.enterT=0; game.roundCounted=false; game.carOpen=false; game.spawnT=0;
     game.aibiCaught=0; game.aibiCd=0; game.hasAibi=false; game.chestFullMsgT=0; chests=[];
     // 宝物只在本局有效：开局清空背包里的宝物（鱼叉/药水保留）
@@ -1405,7 +1421,7 @@
     if (game.state===STATE.WIN || game.state===STATE.OVER) return;
     releaseAllGrabs();
     game.carryHajime=false; game.hajimeTarget=null;
-    game.healChan=null; game.reviveChan=null; game.gateChan=null;
+    game.healChan=null; game.reviveChan=null; game.gateChan=null; game.mendChan=null;
     game.state=STATE.OVER;
     finishRound();
     hideSpectate();
@@ -1510,7 +1526,9 @@
   function updateSkillHud(){
     const ch=CHARS[game.char];
     let txt;
-    if (game.reviveChan) txt="复活中 "+Math.ceil(game.reviveChan.t)+"s";
+    if (game.bearGodT>0) txt="护体无敌 "+Math.ceil(game.bearGodT)+"s";          // 抱抱熊护体
+    else if (game.mendChan) txt="缝补中…"+Math.ceil(game.mendChan.t)+"s";       // 缝补抱抱熊
+    else if (game.reviveChan) txt="复活中 "+Math.ceil(game.reviveChan.t)+"s";
     else if (game.healChan) txt="治疗中 "+Math.ceil(game.healChan.t)+"s";
     else if (game.char==="huang" && game.skillT>0)
       txt="滚动 +12 ·可撞鬼";
@@ -1524,6 +1542,7 @@
   }
   function hurt(t, amount){   // 通用扣血：t=玩家或队友，一次 20
     if (t===player){
+      if (game.bearGodT>0) return false;                       // 抱抱熊护体：无敌
       if (player.invuln>0) return false;
       player.invuln=0.6;
       game.hp=Math.max(0, game.hp-amount); updateHud();
@@ -1569,7 +1588,33 @@
     if (game.eatT>0) game.eatT-=dt;
     if (game.healFx>0) game.healFx-=dt;
     if (game.chestFullMsgT>0) game.chestFullMsgT-=dt;
-    if (game.state!==STATE.PLAYING){ game.healChan=null; game.reviveChan=null; }
+    if (game.state!==STATE.PLAYING){ game.healChan=null; game.reviveChan=null; game.mendChan=null; }
+    // 抱抱熊护体倒计时：无敌 60 秒，所有怪物无视你
+    if (game.bearGodT>0) game.bearGodT-=dt;
+    // 缝补抱抱熊引导（10 秒）：可移动但离熊太远/熊被打狂暴/阵亡则中断；期间会被其它怪物攻击
+    if (game.state===STATE.PLAYING && game.mendChan){
+      const mc=game.mendChan, b=mc.bear;
+      if (!b || b.berserkT>0 || b.grabTarget || !monsters.includes(b)){
+        game.mendChan=null; addFloat(player.x, player.y-26, "缝补被中断了", "#ff8888");
+      } else if (Math.abs(player.x-b.x)>115){   // 只看水平距离：跳上高台躲怪仍能继续补
+        game.mendChan=null; addFloat(player.x, player.y-26, "离太远，缝补中断", "#ff8888");
+      } else {
+        mc.t-=dt;
+        if (mc.t<=0){
+          const where = addItem({type:"treasure", kind:"bearPlush", name:"抱抱熊", value:30000, color:"#b3c092", sell:30000});
+          if (where){
+            const idx=monsters.indexOf(b); if (idx>=0) monsters.splice(idx,1);
+            game.mendChan=null;
+            addFloat(player.x, player.y-30, "缝补完成！获得宝物「抱抱熊」（装备后按 U：无敌 60 秒）", "#ffd76a");
+            game.hasAibi=calcHasAibi();
+            updateEvacHud(); updateHud(); renderHandInBtn();
+          } else {
+            game.mendChan=null;
+            addFloat(player.x, player.y-26, "背包满了，装不下抱抱熊", "#ff8888");
+          }
+        }
+      }
+    }
 
     // 开场阶段：18 秒后开门，进入大门才开始寻宝
     // 疯人院：进大门只是到前厅，要走过正门/左门（向上）或右门地下通道才算正式进入
@@ -1746,21 +1791,39 @@
     }
 
     for (const m of monsters) {
-      // 选目标：落单的队友优先（离玩家 > 150 视为落单）
+      // 抱抱熊护体（无敌 60 秒）：怪物无视玩家 —— 只盯最近的活队友；场上没有活队友则这帧直接发呆（不追玩家）
+      const god = game.bearGodT>0;
+      if (god){
+        let botAlive=false;
+        for (const b of bots) if (!b.dead){ botAlive=true; break; }
+        if (!botAlive){   // 无敌且无活队友：跳过索敌/攻击，全体发呆
+          m.wt=(m.wt||0)-dt;
+          if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=0.8+Math.random()*1.6; }
+          const nx=m.x+Math.cos(m.angle)*cfg.wander*0.6*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*0.6*dt;
+          if (!hitsWall(nx, m.y, m.r, true)) m.x=nx;
+          if (!hitsWall(m.x, ny, m.r, true)) m.y=ny;
+          m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
+          if (m.flash>0) m.flash-=dt;
+          if (m.spawnFx>0) m.spawnFx-=dt;
+          continue;
+        }
+      }
+      // 选目标：落单的队友优先（离玩家 > 150 视为落单）；抱抱熊护体时玩家不参与索敌，只盯队友
       let tx=player.x, ty=player.y;
-      let td=Math.hypot(player.x-m.x, player.y-m.y), targetBot=null;
+      let td = god ? 1e9 : Math.hypot(player.x-m.x, player.y-m.y), targetBot=null;
       for (const b of bots){
         if (b.dead) continue;
         const d=Math.hypot(b.x-m.x, b.y-m.y);
-        if (d<td && Math.hypot(b.x-player.x,b.y-player.y)>150){ td=d; tx=b.x; ty=b.y; targetBot=b; }
+        if (d<td && (god || Math.hypot(b.x-player.x,b.y-player.y)>150)){ td=d; tx=b.x; ty=b.y; targetBot=b; }
       }
-      // 找最近的活体（玩家或队友）：喷火只针对靠近的人，不乱喷
-      let ne={x:player.x,y:player.y}, neObj=player, nd=Math.hypot(player.x-m.x,player.y-m.y);
+      // 找最近的活体（队友，护体时不含玩家）：喷火/咬/偷只针对它
+      let ne={x:player.x,y:player.y}, neObj=god?null:player, nd=god?1e9:Math.hypot(player.x-m.x,player.y-m.y);
       for (const b of bots){
         if (b.dead) continue;
         const d=Math.hypot(b.x-m.x,b.y-m.y);
         if (d<nd){ nd=d; ne={x:b.x,y:b.y}; neObj=b; }
       }
+      if (!neObj) ne={x:player.x,y:player.y};   // 兜底：保证 ne 永远可解引用（god 无队友已在上方 continue）
       // 小幽灵虚弱循环：追击 → 靠近后原地蓄力2秒 → 喷火0.5秒 → 僵3秒 → 恢复追击
       // 傀儡蛋：被盯着就定住 / 没被盯着快速奔跑 / 面向目标蓄力1秒咬 40 血
       if (m.type==="puppet"){
@@ -1786,7 +1849,7 @@
             if (okX) m.x=nx; if (okY) m.y=ny;
             m.face = ne.x>=m.x ? 1 : -1;
             if (okX || okY){ m.stepT-=dt; if (m.stepT<=0){ m.stepT=0.36; m.stepFx=0.5; } }   // 脚步声节奏
-            if (nd < m.r+18+8){ m.lungeT=1; m.biteTarget = nd<Math.hypot(player.x-m.x,player.y-m.y) ? ne : player; m.biteTarget = m.biteTarget===ne?ne:player; }  // 够近→面向蓄力
+            if (nd < m.r+18+8){ m.lungeT=1; m.biteTarget = (god||nd<Math.hypot(player.x-m.x,player.y-m.y)) ? neObj : player; }  // 够近→面向蓄力（护体时绝不咬玩家）
           }
         }
         m.x=Math.max(m.r,Math.min(W-m.r,m.x)); m.y=Math.max(m.r,Math.min(H_TOT-m.r,m.y));
@@ -1885,8 +1948,8 @@
         if (m.flash>0) m.flash-=dt;
         if (m.spawnFx>0) m.spawnFx-=dt;
       } else if (m.type==="bear"){
-        // 僵尸抱抱熊：中立生物，无限血打不死。常态傻晃荡/求抱抱（抱住目标定身 2s，每 1s 勒 15 血）；
-        // 被打 2 次 → 狂暴 6s（红眼加速扑向打它的人猛抱 25 血）；狂暴结束恢复。高台/跳跃中抱不住。
+        // 僵尸抱抱熊：中立生物，无限血打不死。常态温顺不攻击（靠近不会被抱），可被按 E 缝补 10 秒换取宝物「抱抱熊」；
+        // 但被打 2 次 → 狂暴 6s（红眼加速扑向打它的人猛抱 25 血勒伤），狂暴结束恢复。高台/跳跃中抱不住。
         const alive = (t)=> t && (t===player ? (game.hp>0 && game.state===STATE.PLAYING) : (!t.dead));
         if (m.grabTarget){                                  // 抱住目标：贴紧 + 持续勒伤害
           const tgt=m.grabTarget;
@@ -1910,7 +1973,7 @@
         } else if (m.berserkT>0){                           // 狂暴：追打它的人
           m.berserkT-=dt;
           const hater=m.hater;
-          if (hater && alive(hater)){
+          if (hater && alive(hater) && !(game.bearGodT>0 && hater===player)){   // 无敌护体：狂暴熊也无视你
             const d=Math.hypot(hater.x-m.x, hater.y-m.y);
             if (d>0.1){
               const spd=cfg.chase*1.5;                      // 狂暴跑很快
@@ -1932,24 +1995,10 @@
           }
           if (m.berserkT<=0){ m.anger=0; m.hater=null; m.state="wander"; addFloat(m.x,m.y-24,"抱抱熊平静下来了","#cfdcae"); }
         } else {
-          // 常态：找最近的活体求抱抱
-          let hug=null, hd=1e9;
-          if (game.hp>0 && game.state===STATE.PLAYING){ const d=Math.hypot(player.x-m.x,player.y-m.y); if (d<hd){hd=d;hug=player;} }
-          for (const b of bots){ if (!b.dead){ const d=Math.hypot(b.x-m.x,b.y-m.y); if (d<hd){hd=d;hug=b;} } }
-          if (hug && hd<130 && !(hug===player && (player.jumpT>0||onPlatform(player.x,player.y))) && !onPlatform(hug.x,hug.y)){
-            if (hd>0.1){
-              const spd=cfg.chase*0.75;                     // 慢悠悠追去求抱抱
-              const nx=m.x+(hug.x-m.x)/hd*spd*dt, ny=m.y+(hug.y-m.y)/hd*spd*dt;
-              const okX=!hitsWall(nx, m.y, m.r, true), okY=!hitsWall(m.x, ny, m.r, true);
-              if (okX) m.x=nx; if (okY) m.y=ny;
-              m.face = hug.x>=m.x ? 1 : -1;
-            }
-            if (hd < m.r+hug.r+4){
-              m.grabTarget=hug; m.grabT=2; m.grabDmgT=0; hug.grabbed=true;
-              addFloat(hug.x, hug.y-26, "僵尸抱抱熊抱住了你！", "#ff6a6a");
-            }
-          } else {
-            m.wt-=dt;                                       // 闲逛
+          // 常态：温顺不攻击（靠近也不会被抱）。只会慢慢闲逛，等玩家按 E 缝补它（10 秒）换取宝物
+          if (game.mendChan && game.mendChan.bear===m){ /* 缝补中：安心站着让玩家补 */ }
+          else {
+            m.wt-=dt;
             if (m.wt<=0){ m.angle=Math.random()*Math.PI*2; m.wt=1.2+Math.random()*2.5; }
             const nx=m.x+Math.cos(m.angle)*cfg.wander*0.7*dt, ny=m.y+Math.sin(m.angle)*cfg.wander*0.7*dt;
             if (!hitsWall(nx, m.y, m.r, true)) m.x=nx;
@@ -2457,13 +2506,38 @@
       return;
     }
     if (item.type==="badge"){ useBadge(); return; }   // 地窖徽章：传送回车里（需 45000 维修）
+    if (item.type==="treasure" && item.kind==="bearPlush"){   // 抱抱熊宝物：消耗 → 60 秒无敌护体
+      if (game.bearGodT<=0){ invSlots[equipped]=null; equipped=null; renderInv(); }   // 已生效则不消耗
+      useBearPlush();
+      updateEvacHud(); updateHud(); renderHandInBtn();
+      return;
+    }
     addFloat(player.x, player.y-26, "这个物品不能使用", "#ff8888");
+  }
+  function useBearPlush(){   // 抱抱熊护体：消耗一个抱抱熊宝物 → 60 秒无敌，所有怪物无视你
+    if (game.bearGodT>0){ addFloat(player.x, player.y-26, "抱抱熊护体生效中", "#ffd76a"); return; }
+    // 清掉针对玩家的仇恨：狂暴熊冷静、抓抱松手、蓄力咬目标作废
+    const lists = game.map==="castle" ? monstersByFloor : [monsters];
+    for (const list of lists){
+      for (const m of list){
+        if (m.type==="bear"){
+          if (m.hater===player || m.grabTarget===player){
+            m.anger=0; m.berserkT=0; m.hater=null;
+            if (m.grabTarget){ m.grabTarget.grabbed=false; m.grabTarget=null; m.grabT=0; }
+          }
+        } else if (m.biteTarget===player) m.biteTarget=null;
+      }
+    }
+    if (game.mendChan) game.mendChan=null;
+    game.bearGodT=60;
+    addFloat(player.x, player.y-30, "抱抱熊护体！60 秒无敌 · 所有怪物无视你", "#ffd76a");
+    updateSkillHud();
   }
   function useBadge(){   // 地窖徽章：消耗 45000 惊魂币维修，瞬间传送回车里
     if (inv.coins<45000){ addFloat(player.x, player.y-26, "惊魂币不足，维修徽章需要 45000", "#ff8888"); return; }
     inv.coins-=45000; saveInv();
     // 清理进行中的状态
-    game.healChan=null; game.reviveChan=null; game.gateChan=null;
+    game.healChan=null; game.reviveChan=null; game.gateChan=null; game.mendChan=null;
     releaseAllGrabs();   // 传送回车里：松手
     game.carryHajime=false; game.hajimeTarget=null;   // 放下哈基米（留在楼内）
     if (game.ridingCart) releaseCart(game.ridingCart);
@@ -3215,6 +3289,15 @@
       ctx.lineWidth=3;
       ctx.beginPath(); ctx.arc(player.x,player.y,20+p*70,0,Math.PI*2); ctx.stroke();
     }
+    // 抱抱熊护体金环（无敌 60 秒）
+    if (game.bearGodT>0){
+      const t=performance.now()/1000;
+      ctx.strokeStyle=`rgba(255,210,120,${0.55+0.3*Math.sin(t*6)})`;
+      ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(player.x,player.y,26,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle="rgba(255,230,160,0.35)";
+      ctx.beginPath(); ctx.arc(player.x,player.y,26+Math.sin(t*4)*3,0,Math.PI*2); ctx.stroke();
+    }
 
     updateSkillHud();
     updateClockHud();
@@ -3371,6 +3454,21 @@
           ctx.fillStyle = (Math.floor(performance.now()/400)%2) ? "#ff5a5a" : "#fff2c9";
           ctx.font="bold 15px sans-serif";
           ctx.fillText("⏰ 距午夜 24:00 还剩 "+Math.ceil(rem)+" 秒 · 快回车里按 X 撤离！", player.x, player.y-70);
+        }
+      }
+      // 缝补抱抱熊：平静的熊旁提示按 E；引导中在熊头上显示进度条
+      const mendBear = game.mendChan ? game.mendChan.bear
+        : monsters.find(m=>m.type==="bear" && m.berserkT<=0 && !m.grabTarget && Math.hypot(m.x-player.x,m.y-player.y)<110);
+      if (mendBear){
+        if (game.mendChan){
+          const prog = Math.max(0, Math.min(1, (10-game.mendChan.t)/10));
+          ctx.fillStyle="#cfdcae"; ctx.font="bold 12px sans-serif";
+          ctx.fillText("缝补中… "+Math.ceil(game.mendChan.t)+" 秒（离开会中断）", mendBear.x, mendBear.y-38);
+          ctx.fillStyle="#3a3322"; ctx.fillRect(mendBear.x-22, mendBear.y-30, 44, 5);
+          ctx.fillStyle="#9ecf6e"; ctx.fillRect(mendBear.x-22, mendBear.y-30, 44*prog, 5);
+        } else {
+          ctx.fillStyle="#cfdcae"; ctx.font="bold 12px sans-serif";
+          ctx.fillText("按 E 缝补抱抱熊（10 秒得宝物）", mendBear.x, mendBear.y-30);
         }
       }
       ctx.textAlign="left";
